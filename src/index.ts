@@ -8,6 +8,7 @@ import inquirer from 'inquirer';
 import ora from 'ora';
 import fs from 'fs';
 import path from 'path';
+import http from 'http';
 
 // Load environment variables
 dotenv.config();
@@ -78,6 +79,39 @@ const getClient = () => {
   }
 };
 
+// Helper: Generate Response
+const generateResponse = async (clientWrapper: any, history: {role: string, content: string}[], systemPrompt: string, modelName: string) => {
+    if (clientWrapper.type === 'google') {
+        const genAI = clientWrapper.client as GoogleGenerativeAI;
+        // Construct prompt with system instructions + history
+        let fullPrompt = systemPrompt + "\n\n";
+        history.forEach(msg => {
+            fullPrompt += `${msg.role.toUpperCase()}: ${msg.content}\n`;
+        });
+        fullPrompt += "ASSISTANT:";
+
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(fullPrompt);
+        const response = await result.response;
+        return response.text();
+    } else {
+        const anthropic = clientWrapper.client as Anthropic;
+        // Map history to Anthropic format
+        const anthropicHistory = history.map(msg => ({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
+        })) as Anthropic.MessageParam[];
+
+        const response = await anthropic.messages.create({
+            model: modelName,
+            max_tokens: 1024,
+            system: systemPrompt,
+            messages: anthropicHistory,
+        });
+        return response.content[0].type === 'text' ? response.content[0].text : '';
+    }
+};
+
 // --- COMMANDS ---
 
 program
@@ -109,38 +143,8 @@ program
       const spinner = ora('MABEL is perceiving...').start();
 
       try {
-        let text = "";
+        const text = await generateResponse(clientWrapper, history, config.systemPrompt, config.model);
         
-        if (clientWrapper.type === 'google') {
-            const genAI = clientWrapper.client as GoogleGenerativeAI;
-            // Construct prompt with system instructions + history
-            let fullPrompt = config.systemPrompt + "\n\n";
-            history.forEach(msg => {
-                fullPrompt += `${msg.role.toUpperCase()}: ${msg.content}\n`;
-            });
-            fullPrompt += "ASSISTANT:";
-
-            const model = genAI.getGenerativeModel({ model: config.model });
-            const result = await model.generateContent(fullPrompt);
-            const response = await result.response;
-            text = response.text();
-        } else {
-            const anthropic = clientWrapper.client as Anthropic;
-            // Map history to Anthropic format
-            const anthropicHistory = history.map(msg => ({
-                role: msg.role === 'user' ? 'user' : 'assistant',
-                content: msg.content
-            })) as Anthropic.MessageParam[];
-
-            const response = await anthropic.messages.create({
-                model: config.model,
-                max_tokens: 1024,
-                system: config.systemPrompt,
-                messages: anthropicHistory,
-            });
-            text = response.content[0].type === 'text' ? response.content[0].text : '';
-        }
-
         spinner.stop();
         console.log(chalk.magenta.bold('\nMABEL > ') + text + '\n');
 
@@ -158,6 +162,63 @@ program
     };
 
     chatLoop();
+  });
+
+program
+  .command('serve')
+  .description('Start MABEL as an HTTP Service')
+  .option('-p, --port <number>', 'Port to listen on', '9001')
+  .action(async (options) => {
+    const port = parseInt(options.port);
+    const clientWrapper = getClient();
+
+    const server = http.createServer(async (req, res) => {
+      // CORS
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      if (req.method === 'OPTIONS') {
+        res.writeHead(200);
+        res.end();
+        return;
+      }
+
+      if (req.method === 'POST' && req.url === '/chat') {
+        let body = '';
+        req.on('data', chunk => body += chunk);
+        req.on('end', async () => {
+          try {
+            const { message, history } = JSON.parse(body);
+            // Construct local history
+            const chatHistory = history || [];
+            if (message) {
+                chatHistory.push({ role: 'user', content: message });
+            }
+
+            console.log(chalk.blue(`[SERVICE] Request received. Content: ${message?.substring(0, 50)}...`));
+
+            const text = await generateResponse(clientWrapper, chatHistory, config.systemPrompt, config.model);
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ response: text }));
+            console.log(chalk.green(`[SERVICE] Response sent.`));
+          } catch (e: any) {
+             console.error(chalk.red(`[SERVICE] Error: ${e.message}`));
+             res.writeHead(500);
+             res.end(JSON.stringify({ error: e.message }));
+          }
+        });
+      } else {
+        res.writeHead(404);
+        res.end('Not Found');
+      }
+    });
+
+    server.listen(port, () => {
+      console.log(chalk.green(`MABEL Service active on port ${port}`));
+      console.log(chalk.gray(`Endpoint: http://localhost:${port}/chat`));
+    });
   });
 
 program
@@ -184,23 +245,8 @@ program
     `;
 
     try {
-      let text = "";
-      if (clientWrapper.type === 'google') {
-        const genAI = clientWrapper.client as GoogleGenerativeAI;
-        const model = genAI.getGenerativeModel({ model: config.model });
-        const result = await model.generateContent(architectPrompt);
-        const response = await result.response;
-        text = response.text();
-      } else {
-        const anthropic = clientWrapper.client as Anthropic;
-        const response = await anthropic.messages.create({
-          model: config.model,
-          max_tokens: 2048,
-          system: config.systemPrompt,
-          messages: [{ role: 'user', content: architectPrompt }],
-        });
-        text = response.content[0].type === 'text' ? response.content[0].text : '';
-      }
+      // Architect command is a single-turn "chat" effectively
+      const text = await generateResponse(clientWrapper, [{ role: 'user', content: architectPrompt }], config.systemPrompt, config.model);
 
       spinner.succeed('Vision Received');
       
