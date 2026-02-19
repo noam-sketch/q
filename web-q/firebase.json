@@ -1,4 +1,7 @@
 {
+  "functions": {
+    "source": "functions"
+  },
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -7,6 +10,10 @@
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/v1/query",
+        "function": "query"
+      },
       {
         "source": "**",
         "destination": "/index.html"

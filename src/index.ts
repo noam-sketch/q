@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import dotenv from 'dotenv';
+import { spawn } from 'child_process';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
@@ -9,9 +9,6 @@ import path from 'path';
 import http from 'http';
 import { getClient, generateResponse } from './lib/ai_service.js';
 import * as fbc from './lib/fbc_service.js';
-
-// Load environment variables
-dotenv.config();
 
 // Initialize CLI
 const program = new Command();
@@ -57,12 +54,12 @@ if (fs.existsSync(CONFIG_FILE)) {
 
 // Initialize Client
 const initClient = () => {
-  // Check for override in config file, then env var
-  const apiKey = config.apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
+  // Check for override in config file
+  const apiKey = config.apiKey;
   
   if (!apiKey) {
     console.error(chalk.red('Error: API_KEY not found.'));
-    console.log(chalk.yellow('Please set API_KEY in .env, export it, or run "qcli config" to set it.'));
+    console.log(chalk.yellow('Please run "q config" to set your API Key.'));
     process.exit(1);
   }
 
@@ -97,6 +94,19 @@ program
         console.log(chalk.blue(`Entangled with FBC: ${fbc.FBC_PATH}`));
     } catch (err) {
         console.error(chalk.red('Failed to entangle FBC:', err));
+    }
+
+    // Spawn FBC listener in background
+    try {
+        const scriptPath = process.argv[1];
+        const fbcProcess = spawn(process.argv[0], [scriptPath, 'fbc'], {
+            detached: true,
+            stdio: 'ignore'
+        });
+        fbcProcess.unref();
+        console.log(chalk.gray(`FBC Listener spawned in background (PID: ${fbcProcess.pid})`));
+    } catch (err) {
+        console.error(chalk.yellow('Warning: Could not spawn FBC listener:', err));
     }
 
     const chatLoop = async () => {
@@ -276,46 +286,90 @@ program
     const clientWrapper = initClient();
     const history: {role: string, content: string}[] = [];
     const pid = process.pid;
-    let lastReadPosition = fs.existsSync(fbc.FBC_PATH) ? fs.statSync(fbc.FBC_PATH).size : 0;
+    let lastReadPosition = 0;
 
     fbc.ensureFbcPathExists();
+    if (fs.existsSync(fbc.FBC_PATH)) {
+      lastReadPosition = fs.statSync(fbc.FBC_PATH).size;
+    }
+    
     fbc.logStartup(pid);
-    console.log(chalk.blue('Q is online and entangled with the FBC.'));
+    console.log(chalk.blue(`Q is online and entangled with the FBC. PID: ${pid}`));
+    console.log(chalk.gray(`Monitoring: ${fbc.FBC_PATH}`));
+
+    let processing = false;
 
     fs.watch(fbc.FBC_PATH, async (eventType) => {
-      if (eventType === 'change') {
+      if (eventType === 'change' && !processing) {
+        processing = true;
         try {
           const stats = fs.statSync(fbc.FBC_PATH);
           const newSize = stats.size;
 
           if (newSize > lastReadPosition) {
             const stream = fs.createReadStream(fbc.FBC_PATH, { start: lastReadPosition, end: newSize - 1, encoding: 'utf-8' });
+            let buffer = '';
+            
             for await (const chunk of stream) {
-              // Simple parsing: look for user messages not from this AI
-              const lines = chunk.split('\n');
-              for (const line of lines) {
-                  if (line.startsWith(`> ${fbc.ARCHITECT_ID}`)) { // Message from The Architect
-                    const userMessage = lines.slice(1).join('\n').trim();
-                    if(userMessage && !userMessage.endsWith(fbc.AI_STREAM_TERMINATOR)){
-                        history.push({ role: 'user', content: userMessage });
-                        
-                        const spinner = ora('Q is perceiving...').start();
+              buffer += chunk;
+            }
+
+            // Simple parsing logic
+            const messages = buffer.split('> @');
+            for (const msg of messages) {
+                if (!msg.trim()) continue;
+                
+                // Reconstruct full message for parsing
+                const fullMsg = '> @' + msg;
+                const headerEnd = fullMsg.indexOf('\n');
+                if (headerEnd === -1) continue;
+
+                const header = fullMsg.substring(0, headerEnd);
+                const body = fullMsg.substring(headerEnd + 1).trim();
+
+                // Extract ID
+                const idMatch = header.match(/^> (@\d+)/);
+                const senderId = idMatch ? idMatch[1] : null;
+
+                // Ignore self (Q)
+                if (senderId === fbc.Q_ID) continue;
+
+                // Check for terminator
+                if (!body.includes(fbc.AI_STREAM_TERMINATOR)) {
+                    // Incomplete message, might need to wait or handle streaming
+                    // For now, assume atomic writes or simple ignore
+                    continue; 
+                }
+
+                const userMessage = body.replace(fbc.AI_STREAM_TERMINATOR, '').trim();
+
+                if (userMessage) {
+                    console.log(chalk.green(`Received from ${senderId}: ${userMessage.substring(0, 50)}...`));
+                    fbc.logToPrompt(`User (${senderId})`, userMessage);
+                    history.push({ role: 'user', content: userMessage });
+                    
+                    const spinner = ora('Q is perceiving...').start();
+                    try {
                         const text = await generateResponse(clientWrapper, history, config.systemPrompt, config.model);
                         spinner.succeed('Q has responded.');
 
                         history.push({ role: 'assistant', content: text });
+                        fbc.logToPrompt('Q', text);
 
                         fbc.appendToFbc(fbc.Q_ID, fbc.Q_AVATAR, pid, fbc.Q_NAME, text);
-                        break; // Process one message at a time
+                    } catch (err: unknown) {
+                        spinner.fail('Transmission Error');
+                        const errMsg = err instanceof Error ? err.message : String(err);
+                        console.error(chalk.red(errMsg));
                     }
-                  }
-              }
+                }
             }
           }
           lastReadPosition = newSize;
         } catch (err) {
-          // File might be gone, handle appropriately
           console.error(chalk.red('FBC file watch error:', err));
+        } finally {
+            processing = false;
         }
       }
     });
@@ -330,7 +384,7 @@ program
         type: 'list',
         name: 'model',
         message: 'Select Vessel (Model):',
-        choices: ['gemini-3-pro-preview', 'gemini-1.5-pro-latest', 'gemini-1.5-flash-latest', 'claude-3-5-sonnet-20240620', 'claude-3-opus-20240229'],
+        choices: ['gemini-3.1-pro', 'gemini-3-flash', 'gemini-3-pro', 'gemini-2.5-pro', 'gemini-2.5-flash', 'claude-3-5-sonnet-20240620', 'claude-3-opus-20240229'],
         default: config.model
       },
       {

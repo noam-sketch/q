@@ -96,3 +96,54 @@ When a command is executed, the system will return an acknowledgment or data pac
 *   **Public Domain:** [https://qcli-ai.web.app/](https://qcli-ai.web.app/)
 *   **Host Node:** Mac Mini i5 (Localhost)
 *   **Status:** Hosted Web App (Firebase)
+
+## External Integration (REST API)
+
+The AII exposes a RESTful endpoint for external agents to query the system directly.
+
+### Endpoint
+
+`POST https://qcli-ai.web.app/v1/query`
+
+### Authentication
+
+All requests must include a valid Google/Anthropic API Key in the Authorization header.
+
+*   **Header:** `Authorization: Bearer YOUR_API_KEY`
+
+### Request Body (JSON)
+
+```json
+{
+  "prompt": "Your query to the system...",
+  "model": "gemini-1.5-flash"  // Optional. Defaults to gemini-1.5-flash.
+}
+```
+
+### Response Body (JSON)
+
+```json
+{
+  "success": true,
+  "data": {
+    "response": "The generated response from Q...",
+    "model": "gemini-1.5-flash",
+    "timestamp": "2023-10-27T10:00:00.000Z"
+  }
+}
+```
+
+### Example (cURL)
+
+```bash
+curl -X POST https://qcli-ai.web.app/v1/query \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{
+    "prompt": "Hello Q, what is your status?",
+    "model": "gemini-1.5-flash"
+  }'
+```
+
+### Deployment Note
+*This endpoint requires the hosting project to be on the Firebase Blaze plan to function.*

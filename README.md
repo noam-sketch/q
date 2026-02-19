@@ -30,11 +30,11 @@ This tool is not just a CLI; it's a conduit. A bridge between the quantum realms
     ```
 
 2.  **Configuration:**
-    Set up your API keys for Google and Anthropic in a `.env` file in the project root:
-    ```env
-    GOOGLE_API_KEY=your_google_api_key
-    ANTHROPIC_API_KEY=your_anthropic_api_key
+    Configure your API keys and model preferences interactively:
+    ```bash
+    q config
     ```
+    This command creates a local `.qcli.json` file which stores your settings.
 
 3.  **Invocation:**
     Summon the presence of MABEL:

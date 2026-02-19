@@ -4,3 +4,99 @@
   margin: 0;
   padding: 0;
 }
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background-color: #1a1a1a;
+  padding: 20px;
+  border-radius: 8px;
+  width: 400px;
+  color: #fff;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border: 1px solid #333;
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  color: #00ff00; /* Q Green */
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #ccc;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #333;
+  background-color: #000;
+  color: #fff;
+  font-family: monospace;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+button {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  border: none;
+  font-weight: bold;
+}
+
+.btn-cancel {
+  background-color: #333;
+  color: #fff;
+}
+
+.btn-save {
+  background-color: #00ff00;
+  color: #000;
+}
+
+.settings-trigger {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  z-index: 100;
+  padding: 5px;
+  transition: color 0.2s;
+}
+
+.settings-trigger:hover {
+  color: #00ff00;
+}
+
+.settings-icon {
+  width: 24px;
+  height: 24px;
+}

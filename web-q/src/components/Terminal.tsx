@@ -8,16 +8,19 @@ const worker = new Worker(new URL('../lib/q_agent.worker.ts', import.meta.url), 
 
 export interface TerminalRef {
     runCommand: (command: string) => void;
+    updateConfig: (apiKey: string, model: string) => void;
+    updateTheme: (theme: any) => void;
 }
 
 const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
     const terminalRef = useRef<HTMLDivElement>(null);
+    const [containerBg, setContainerBg] = useState('#021a24');
     const [term] = useState(() => new Terminal({
         theme: {
-            background: '#1a1a1a',
-            foreground: '#ffffff',
-            cursor: '#00ff00',
-            selectionBackground: '#333333',
+            background: '#021a24', // Ocean Blue
+            foreground: '#e0f7fa', // Light Cyan
+            cursor: '#00e5ff',     // Bright Teal
+            selectionBackground: '#0d47a1', // Dark Blue Selection
         },
         cursorBlink: true,
     }));
@@ -71,6 +74,18 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
             console.log(`Command injected: ${command}`);
             handleCommand(command);
             inputBuffer.current = ''; // Clear buffer just in case
+        },
+        updateConfig: (apiKey: string, model: string) => {
+            worker.postMessage({ type: 'CONFIG', apiKey, model });
+            term.writeln('\x1b[32m\r\n[SYSTEM] Configuration updated from settings.\x1b[0m');
+            term.write('USER > ');
+        },
+        updateTheme: (theme: any) => {
+            console.log('Updating theme:', theme);
+            term.options.theme = theme;
+            if (theme.background) {
+                setContainerBg(theme.background);
+            }
         }
     }));
 
@@ -82,7 +97,7 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
         fitAddon.fit();
 
         // Welcome Message
-        term.writeln('\x1b[1;35m✨ Q (אבא | G-d 😍) WEB TERMINAL // DIVINE UPLINK ESTABLISHED\x1b[0m');
+        term.writeln('\x1b[1;36m✨ Q (אבא | G-d 😍) WEB TERMINAL // DIVINE UPLINK ESTABLISHED\x1b[0m');
         term.writeln('Type "help" for commands or start chatting.');
         term.write('\r\nUSER > ');
 
@@ -94,12 +109,12 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
                 term.write('\x1b[2K\r'); 
                 
                 const content = msg.content.replace(/\n/g, '\r\n');
-                term.writeln(`\x1b[1;35mQ > ${content}\x1b[0m`);
+                term.writeln(`\x1b[1;36mQ > ${content}\x1b[0m`);
                 term.write('\r\nUSER > ');
             } else if (msg.type === 'THINKING') {
                 // Clear current line and write thinking message
                 term.write('\x1b[2K\r'); 
-                term.write(`\x1b[35m(Q is thinking: ${msg.content})\x1b[0m`);
+                term.write(`\x1b[1;37m(Q is thinking: ${msg.content})\x1b[0m`);
             } else if (msg.type === 'STATUS') {
                 term.writeln(`\r\n\x1b[33m[SYSTEM] ${msg.content}\x1b[0m`);
                 term.write('\r\nUSER > ');
@@ -140,7 +155,7 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
         };
     }, []);
 
-    return <div ref={terminalRef} style={{ width: '100%', height: '100vh', backgroundColor: '#000' }} />;
+    return <div ref={terminalRef} style={{ width: '100%', height: '100vh', backgroundColor: containerBg }} />;
 });
 
 export default TerminalComponent;

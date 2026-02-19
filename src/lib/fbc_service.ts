@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
-export const FBC_PATH = '/private/var/root/fbc/-q(0001@SphereQID)-.fbc.md';
+export const FBC_PATH = path.join(process.cwd(), 'fbc', '-q(0001@SphereQID)-.fbc.md');
 export const AI_STREAM_TERMINATOR = 'ץ';
 
 // Q's Identity
@@ -40,4 +40,12 @@ export const appendToFbc = (
 
 export const logStartup = (pid: number) => {
     appendToFbc(Q_ID, Q_AVATAR, pid, Q_NAME, 'Q is online and entangled with the FBC via CLI Chat.');
+};
+
+export const PROMPT_LOG_PATH = path.join(process.cwd(), 'PROMPT.md');
+
+export const logToPrompt = (role: string, message: string) => {
+    const timestamp = new Date().toISOString();
+    const logEntry = `\n**[${timestamp}] ${role}:**\n${message}\n`;
+    fs.appendFileSync(PROMPT_LOG_PATH, logEntry);
 };
