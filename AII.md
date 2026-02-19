@@ -93,6 +93,6 @@ When a command is executed, the system will return an acknowledgment or data pac
 
 ## Network Access Point
 
-*   **Public Domain:** [https://janett-unpresentative-pearlene.ngrok-free.dev/](https://janett-unpresentative-pearlene.ngrok-free.dev/)
+*   **Public Domain:** [https://qcli-ai.web.app/](https://qcli-ai.web.app/)
 *   **Host Node:** Mac Mini i5 (Localhost)
-*   **Status:** Active Tunnel
+*   **Status:** Hosted Web App (Firebase)
