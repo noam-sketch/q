@@ -1,22 +1,23 @@
 # Guide: Moving to Blaze Plan & Built-in API Key
 
-I have architected the system to support a **Built-in API Key** once you upgrade to the Blaze plan.
+I have architected the system to support a **Built-in API Key** using modern **Firebase Secrets Manager**.
 
 ## 1. Upgrade to Blaze Plan
 *   **Action:** Go to the [Firebase Console Usage Details](https://console.firebase.google.com/project/qcli-ai/usage/details).
 *   **Step:** Switch your project plan from **Spark** (Free) to **Blaze** (Pay-as-you-go).
-*   **Reason:** Cloud Functions requires Blaze to make external network calls (to Google AI) and use required build services.
+*   **Reason:** Cloud Functions requires Blaze to make external network calls and use Secret Manager.
 
-## 2. Configure the Built-in Key
-Once on Blaze, you can securely store your API key on the server. This allows users to visit your web app and use it *without* entering their own key.
+## 2. Configure the Built-in Key (Secrets)
+We now use **Cloud Secret Manager** instead of the deprecated `functions.config()`. This is more secure and future-proof.
 
 *   **Command:** Run this in your terminal:
     ```bash
-    firebase functions:config:set gemini.key="AIzaYourActualSecretAPIKeyHere"
+    firebase functions:secrets:set GEMINI_API_KEY
     ```
+    *You will be prompted to paste your API Key.*
 
 ## 3. Deploy the Backend
-Now deploy the Cloud Function that acts as the secure proxy.
+Deploy the Cloud Function. The first time you use secrets, it may ask for permission to enable the Secret Manager API.
 
 *   **Command:**
     ```bash
@@ -24,10 +25,8 @@ Now deploy the Cloud Function that acts as the secure proxy.
     ```
 
 ## 4. Verification
-*   **Frontend Logic:** I have already updated the web app. If a user *does not* provide a key in settings, the app now automatically attempts to contact your backend endpoint (`/v1/query`).
-*   **Backend Logic:** The function will detect that no user key was sent and will automatically use the `gemini.key` you configured in Step 2.
+*   **Frontend Logic:** If a user *does not* provide a key in settings, the app automatically attempts to contact your backend endpoint (`/v1/query`).
+*   **Backend Logic:** The function securely retrieves `GEMINI_API_KEY` from Secret Manager and proxies the request.
 
 **Security Note:**
-Currently, the endpoint is public. Once deployed, anyone can use your quota. Consider adding:
-*   **App Check:** To ensure only your specific web app can call the function.
-*   **CORS Restrictions:** Tighten the `origin` policy in `web-q/functions/index.js`.
+The endpoint uses your quota. Consider adding App Check or CORS restrictions in `web-q/functions/index.js` before wide release.

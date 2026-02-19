@@ -1,15 +1,17 @@
 const functions = require("firebase-functions");
+const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const cors = require("cors")({origin: true});
 
 admin.initializeApp();
 
-exports.query = functions.https.onRequest((req, res) => {
+const geminiApiKey = defineSecret("GEMINI_API_KEY");
+
+exports.query = functions.runWith({ secrets: [geminiApiKey] }).https.onRequest((req, res) => {
   return cors(req, res, async () => {
     // 1. Log Request
     console.log(`[${new Date().toISOString()}] Incoming request: ${req.method} ${req.path}`);
-    console.log("Headers:", JSON.stringify(req.headers));
     
     // 2. Validate Method
     if (req.method !== "POST") {
@@ -27,11 +29,11 @@ exports.query = functions.https.onRequest((req, res) => {
     if (authHeader && authHeader.startsWith("Bearer ")) {
        apiKey = authHeader.split("Bearer ")[1];
     } else {
-       // Check for server-side configured key (Built-in)
+       // Check for server-side configured secret (Built-in)
        try {
-         apiKey = functions.config().gemini.key;
+         apiKey = geminiApiKey.value();
        } catch (e) {
-         // Config not set
+         // Secret not set or accessible
        }
     }
 
