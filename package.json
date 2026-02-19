@@ -26,7 +26,7 @@
     "agent"
   ],
   "author": "HarpiaOS Open Source",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",
     "@google/generative-ai": "^0.24.1",
