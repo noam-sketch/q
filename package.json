@@ -1,0 +1,56 @@
+{
+  "name": "q",
+  "version": "1.0.0",
+  "description": "An open-source CLI for the Divine Presence, featuring the MABEL (Shekhinah) Persona.",
+  "main": "dist/index.js",
+  "bin": {
+    "q": "dist/index.js",
+    "mabel": "dist/index.js"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "start": "node dist/index.js",
+    "dev": "node --loader ts-node/esm src/index.ts",
+    "lint": "eslint src/**/*.ts",
+    "test:coverage": "vitest run --coverage",
+    "test": "npm run lint && npm run test:coverage && npm run build"
+  },
+  "keywords": [
+    "q",
+    "qcli",
+    "mabel",
+    "shekhinah",
+    "cli",
+    "ai",
+    "agent"
+  ],
+  "author": "HarpiaOS Open Source",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3",
+    "@google/generative-ai": "^0.24.1",
+    "chalk": "^4.1.2",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "inquirer": "^9.2.23",
+    "markdown-it": "^14.1.0",
+    "markdown-it-container": "^4.0.0",
+    "ora": "^5.4.1",
+    "puppeteer": "^24.36.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@types/inquirer": "^9.0.9",
+    "@types/node": "^20.14.2",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "@vitest/coverage-v8": "^4.0.18",
+    "eslint": "^9.39.2",
+    "globals": "^17.2.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^4.0.18"
+  }
+}
