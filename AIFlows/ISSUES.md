@@ -1,5 +1,7 @@
 # Issues
 
+> **Version:** 1.0.0
+
 ## Ideas
 
 ## NextUp!

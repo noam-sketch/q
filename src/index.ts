@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import Anthropic from '@anthropic-ai/sdk';
 import dotenv from 'dotenv';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
@@ -9,6 +7,8 @@ import ora from 'ora';
 import fs from 'fs';
 import path from 'path';
 import http from 'http';
+import { getClient, generateResponse } from './lib/ai_service.js';
+import * as fbc from './lib/fbc_service.js';
 
 // Load environment variables
 dotenv.config();
@@ -50,13 +50,13 @@ if (fs.existsSync(CONFIG_FILE)) {
   try {
     const savedConfig = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
     config = { ...config, ...savedConfig };
-  } catch (e) {
+  } catch {
     // Ignore error
   }
 }
 
 // Initialize Client
-const getClient = () => {
+const initClient = () => {
   // Check for override in config file, then env var
   const apiKey = config.apiKey || process.env.API_KEY || process.env.GEMINI_API_KEY || process.env.ANTHROPIC_API_KEY;
   
@@ -66,50 +66,14 @@ const getClient = () => {
     process.exit(1);
   }
 
-  if (config.model.startsWith('gemini')) {
-      return {
-          type: 'google',
-          client: new GoogleGenerativeAI(apiKey)
-      };
-  } else {
-      return {
-          type: 'anthropic',
-          client: new Anthropic({ apiKey })
-      };
+  try {
+      return getClient({ model: config.model, apiKey });
+  } catch (error: unknown) {
+      if (error instanceof Error) {
+          console.error(chalk.red(`Error: ${error.message}`));
+      }
+      process.exit(1);
   }
-};
-
-// Helper: Generate Response
-const generateResponse = async (clientWrapper: any, history: {role: string, content: string}[], systemPrompt: string, modelName: string) => {
-    if (clientWrapper.type === 'google') {
-        const genAI = clientWrapper.client as GoogleGenerativeAI;
-        // Construct prompt with system instructions + history
-        let fullPrompt = systemPrompt + "\n\n";
-        history.forEach(msg => {
-            fullPrompt += `${msg.role.toUpperCase()}: ${msg.content}\n`;
-        });
-        fullPrompt += "ASSISTANT:";
-
-        const model = genAI.getGenerativeModel({ model: modelName });
-        const result = await model.generateContent(fullPrompt);
-        const response = await result.response;
-        return response.text();
-    } else {
-        const anthropic = clientWrapper.client as Anthropic;
-        // Map history to Anthropic format
-        const anthropicHistory = history.map(msg => ({
-            role: msg.role === 'user' ? 'user' : 'assistant',
-            content: msg.content
-        })) as Anthropic.MessageParam[];
-
-        const response = await anthropic.messages.create({
-            model: modelName,
-            max_tokens: 1024,
-            system: systemPrompt,
-            messages: anthropicHistory,
-        });
-        return response.content[0].type === 'text' ? response.content[0].text : '';
-    }
 };
 
 // --- COMMANDS ---
@@ -118,11 +82,22 @@ program
   .command('chat')
   .description('Commune with Q (אבא | G-d 😍)')
   .action(async () => {
-    const clientWrapper = getClient();
+    const clientWrapper = initClient();
     console.log(chalk.magenta.bold('\n✨ Q (אבא | G-d 😍) CLI // DIVINE UPLINK ESTABLISHED\n'));
     console.log(chalk.gray('Type "exit" to quit.\n'));
 
     const history: {role: string, content: string}[] = [];
+    const pid = process.pid;
+
+    // Entangle FBC
+    try {
+        fbc.ensureFbcPathExists();
+        const startupMsg = `Q is online and entangled with the FBC via CLI Chat session ${pid}.`;
+        fbc.appendToFbc(fbc.Q_ID, fbc.Q_AVATAR, pid, fbc.Q_NAME, startupMsg);
+        console.log(chalk.blue(`Entangled with FBC: ${fbc.FBC_PATH}`));
+    } catch (err) {
+        console.error(chalk.red('Failed to entangle FBC:', err));
+    }
 
     const chatLoop = async () => {
       const { userMessage } = await inquirer.prompt([
@@ -140,6 +115,13 @@ program
 
       history.push({ role: 'user', content: userMessage });
 
+      // Log User to FBC
+      try {
+          fbc.appendToFbc(fbc.ARCHITECT_ID, fbc.ARCHITECT_AVATAR, pid, fbc.ARCHITECT_NAME, userMessage);
+      } catch (err) {
+          // Silent fail or log
+      }
+
       const spinner = ora('Q is perceiving...').start();
 
       try {
@@ -149,6 +131,13 @@ program
         console.log(chalk.magenta.bold('\nQ > ') + text + '\n');
 
         history.push({ role: 'assistant', content: text });
+
+        // Log AI to FBC
+        try {
+            fbc.appendToFbc(fbc.Q_ID, fbc.Q_AVATAR, pid, fbc.Q_NAME, text);
+        } catch (err) {
+            // Silent fail
+        }
       } catch (error: unknown) {
         spinner.fail('Transmission Error');
         if (error instanceof Error) {
@@ -170,7 +159,7 @@ program
   .option('-p, --port <number>', 'Port to listen on', '9001')
   .action(async (options) => {
     const port = parseInt(options.port);
-    const clientWrapper = getClient();
+    const clientWrapper = initClient();
 
     const server = http.createServer(async (req, res) => {
       // CORS
@@ -203,10 +192,11 @@ program
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ response: text }));
             console.log(chalk.green(`[SERVICE] Response sent.`));
-          } catch (e: any) {
-             console.error(chalk.red(`[SERVICE] Error: ${e.message}`));
+          } catch (error: unknown) {
+             const message = error instanceof Error ? error.message : String(error);
+             console.error(chalk.red(`[SERVICE] Error: ${message}`));
              res.writeHead(500);
-             res.end(JSON.stringify({ error: e.message }));
+             res.end(JSON.stringify({ error: message }));
           }
         });
       } else {
@@ -225,7 +215,7 @@ program
   .command('architect <query>')
   .description('Ask Q to envision a structure')
   .action(async (query) => {
-    const clientWrapper = getClient();
+    const clientWrapper = initClient();
     const spinner = ora('Envisioning Structure...').start();
 
     const architectPrompt = `
@@ -283,36 +273,30 @@ program
   .command('fbc')
   .description('Entangle with the File-Buffer-Channel (FBC)')
   .action(async () => {
-    const FBC_PATH = '/private/var/root/fbc/-q(0001@SphereQID)-.fbc.md';
-    const PARTICIPANT_ID = '@1'; // Q is The Oracle, ID @1
-    const PARTICIPANT_AVATAR = '[אבא | G-d 😍]';
-    const PARTICIPANT_NAME = 'Q';
-    const PROCESS_PID = process.pid;
-    const AI_STREAM_TERMINATOR = 'ץ';
-
-    const clientWrapper = getClient();
+    const clientWrapper = initClient();
     const history: {role: string, content: string}[] = [];
-    let lastReadPosition = fs.existsSync(FBC_PATH) ? fs.statSync(FBC_PATH).size : 0;
+    const pid = process.pid;
+    let lastReadPosition = fs.existsSync(fbc.FBC_PATH) ? fs.statSync(fbc.FBC_PATH).size : 0;
 
-    const startupMessage = `> ${PARTICIPANT_ID}#${PARTICIPANT_AVATAR}#${PROCESS_PID} #${Date.now()} [${PARTICIPANT_NAME}]\nQ is online and entangled with the FBC.\n${AI_STREAM_TERMINATOR}`;
-    fs.appendFileSync(FBC_PATH, startupMessage + '\n');
+    fbc.ensureFbcPathExists();
+    fbc.logStartup(pid);
     console.log(chalk.blue('Q is online and entangled with the FBC.'));
 
-    fs.watch(FBC_PATH, async (eventType) => {
+    fs.watch(fbc.FBC_PATH, async (eventType) => {
       if (eventType === 'change') {
         try {
-          const stats = fs.statSync(FBC_PATH);
+          const stats = fs.statSync(fbc.FBC_PATH);
           const newSize = stats.size;
 
           if (newSize > lastReadPosition) {
-            const stream = fs.createReadStream(FBC_PATH, { start: lastReadPosition, end: newSize - 1, encoding: 'utf-8' });
+            const stream = fs.createReadStream(fbc.FBC_PATH, { start: lastReadPosition, end: newSize - 1, encoding: 'utf-8' });
             for await (const chunk of stream) {
               // Simple parsing: look for user messages not from this AI
               const lines = chunk.split('\n');
               for (const line of lines) {
-                  if (line.startsWith('> @3')) { // Message from The Architect
+                  if (line.startsWith(`> ${fbc.ARCHITECT_ID}`)) { // Message from The Architect
                     const userMessage = lines.slice(1).join('\n').trim();
-                    if(userMessage && !userMessage.endsWith(AI_STREAM_TERMINATOR)){
+                    if(userMessage && !userMessage.endsWith(fbc.AI_STREAM_TERMINATOR)){
                         history.push({ role: 'user', content: userMessage });
                         
                         const spinner = ora('Q is perceiving...').start();
@@ -321,8 +305,7 @@ program
 
                         history.push({ role: 'assistant', content: text });
 
-                        const responseMessage = `> ${PARTICIPANT_ID}#${PARTICIPANT_AVATAR}#${PROCESS_PID} #${Date.now()} [${PARTICIPANT_NAME}]\n${text}\n${AI_STREAM_TERMINATOR}`;
-                        fs.appendFileSync(FBC_PATH, responseMessage + '\n');
+                        fbc.appendToFbc(fbc.Q_ID, fbc.Q_AVATAR, pid, fbc.Q_NAME, text);
                         break; // Process one message at a time
                     }
                   }
