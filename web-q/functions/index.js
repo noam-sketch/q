@@ -21,20 +21,24 @@ exports.query = functions.https.onRequest((req, res) => {
     }
 
     // 3. Validate API Key
+    let apiKey;
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      res.status(401).json({
-        error: "Unauthorized",
-        message: "Missing or invalid Authorization header. Format: Bearer <API_KEY>"
-      });
-      return;
+    
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+       apiKey = authHeader.split("Bearer ")[1];
+    } else {
+       // Check for server-side configured key (Built-in)
+       try {
+         apiKey = functions.config().gemini.key;
+       } catch (e) {
+         // Config not set
+       }
     }
 
-    const apiKey = authHeader.split("Bearer ")[1];
     if (!apiKey || apiKey.length < 20) {
-       res.status(403).json({
-         error: "Forbidden",
-         message: "Invalid API Key format."
+       res.status(401).json({
+         error: "Unauthorized",
+         message: "Missing API Key. Provide 'Authorization: Bearer <KEY>' or configure server-side key."
        });
        return;
     }

@@ -36,31 +36,51 @@ fbc.init().then(() => {
 
 // Helper: Generate Response
 const generateResponse = async (userMessage: string): Promise<string> => {
-    if (!state.apiKey) {
-        return "Q: My vision is clouded. Please provide a Google AI Studio API Key (starting with `AIza...`) using the `config` command.";
-    }
+    let fullPrompt = state.systemPrompt + "\n\n";
+    history.forEach(msg => {
+        fullPrompt += `${msg.role.toUpperCase()}: ${msg.content}\n`;
+    });
+    fullPrompt += `USER: ${userMessage}\nASSISTANT:`;
 
-    try {
-        const genAI = new GoogleGenerativeAI(state.apiKey);
-        const model = genAI.getGenerativeModel({ model: state.model });
-        
-        let fullPrompt = state.systemPrompt + "\n\n";
-        history.forEach(msg => {
-            fullPrompt += `${msg.role.toUpperCase()}: ${msg.content}\n`;
-        });
-        fullPrompt += `USER: ${userMessage}\nASSISTANT:`;
-
-        const result = await model.generateContent(fullPrompt);
-        const response = await result.response;
-        return response.text();
-    } catch (error: any) {
-        let errorMessage = error.message;
-        if (error.message.includes('404') || error.message.includes('not found')) {
-             errorMessage = `Model '${state.model}' not found. Please check your config or try 'gemini-1.5-pro'.`;
-        } else if (error.message.includes('403') || error.message.includes('API key')) {
-             errorMessage = "Invalid API Key. Please check your Google AI Studio key.";
+    // 1. Client-Side (User provided key)
+    if (state.apiKey) {
+        try {
+            const genAI = new GoogleGenerativeAI(state.apiKey);
+            const model = genAI.getGenerativeModel({ model: state.model });
+            
+            const result = await model.generateContent(fullPrompt);
+            const response = await result.response;
+            return response.text();
+        } catch (error: any) {
+            return `Q: Transmission Error (Client) - ${error.message}`;
         }
-        return `Q: Transmission Error - ${errorMessage}`;
+    } 
+    
+    // 2. Server-Side (Built-in key via Proxy)
+    else {
+        try {
+            const response = await fetch('/v1/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: fullPrompt,
+                    model: state.model
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    return "Q: My vision is clouded. Please provide a Google AI Studio API Key using the `config` command (or configure the server-side key).";
+                }
+                throw new Error(data.message || data.error || 'Server Error');
+            }
+
+            return data.data.response;
+        } catch (error: any) {
+             return `Q: Transmission Error (Server) - ${error.message}`;
+        }
     }
 };
 
