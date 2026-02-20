@@ -97,9 +97,9 @@ function App() {
             <div className="q-local-download">
                 <span>[⬇️ Download Q-Local]</span>
                 <div className="dropdown-menu">
-                    <a href="/q-local-macos" download>macOS (Intel/Apple Silicon)</a>
-                    <a href="/q-local-windows.exe" download>Windows (x64)</a>
-                    <a href="/q-local-linux" download>Linux (x64)</a>
+                    <a href="/q-local-macos" download title="After downloading, run 'chmod +x q-local-macos' in terminal">macOS (Intel/Apple Silicon) <span className="dl-hint">chmod +x</span></a>
+                    <a href="/q-local-windows.exe" download>Windows (x64) <span className="dl-hint">.exe</span></a>
+                    <a href="/q-local-linux" download title="After downloading, run 'chmod +x q-local-linux' in terminal">Linux (x64) <span className="dl-hint">chmod +x</span></a>
                 </div>
             </div>
         )}

@@ -341,6 +341,18 @@ button {
   color: #00ff00;
 }
 
+.dl-hint {
+  display: block;
+  font-size: 0.75em;
+  color: #666;
+  font-family: monospace;
+  margin-top: 4px;
+}
+
+.dropdown-menu a:hover .dl-hint {
+  color: #00aa00;
+}
+
 .github-footer-link {
   position: absolute;
   bottom: 12px;
@@ -368,6 +380,14 @@ button {
 
 .github-icon {
   opacity: 0.7;
+}
+
+.xterm-viewport, .xterm-screen {
+  background-color: transparent !important;
+}
+
+.xterm {
+  padding: 15px;
 }
 
 .github-footer-link:hover .github-icon {

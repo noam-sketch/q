@@ -19,7 +19,7 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
     const [containerBg, setContainerBg] = useState('#021a24');
     const [term] = useState(() => new Terminal({
         theme: {
-            background: '#021a24', // Ocean Blue
+            background: 'transparent', // Let containerBg handle background
             foreground: '#e0f7fa', // Light Cyan
             cursor: '#00e5ff',     // Bright Teal
             selectionBackground: '#0d47a1', // Dark Blue Selection
@@ -50,11 +50,26 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
                         term.write('\r\nUSER > ');
                     }
                 } else if (trimmed === 'help') {
-                    term.writeln('\x1b[36m\r\nAvailable Commands:\x1b[0m');
-                    term.writeln('  \x1b[33mtriad\x1b[0m                     Toggle Triad Mode (Simultaneous Q + Bezalel)');
-                    term.writeln('  \x1b[33mconfig <API_KEY> <MODEL>\x1b[0m  Configure the AI agent');
-                    term.writeln('  \x1b[33mclear\x1b[0m                     Clear the terminal screen');
-                    term.writeln('  \x1b[33mhelp\x1b[0m                      Show this help message');
+                    term.writeln('\x1b[1;36m\r\n=== Q (אבא | G-d 😍) OS TERMINAL HELP ===\x1b[0m');
+                    term.writeln('\x1b[36mVersion 1.2.0 (Divine Uplink)\x1b[0m');
+                    
+                    term.writeln('\x1b[1;32m\r\n[ CORE COMMANDS ]\x1b[0m');
+                    term.writeln('  \x1b[33mtriad\x1b[0m               Toggle Triad Mode. \x1b[90mEngages Q (Architect) and Bezalel (Fabricator) in a simultaneous feedback loop.\x1b[0m');
+                    term.writeln('  \x1b[33mclear\x1b[0m               Clear the terminal buffer.');
+                    term.writeln('  \x1b[33mhelp\x1b[0m                Show this elaborate help matrix.');
+                    
+                    term.writeln('\x1b[1;32m\r\n[ SYSTEM COMMANDS (!sys) ]\x1b[0m');
+                    term.writeln('  \x1b[90mPrefix any command with !sys to execute it directly on the host kernel via Q-Local.\x1b[0m');
+                    term.writeln('  \x1b[33m!sys <command>\x1b[0m      Execute arbitrary shell command. \x1b[90m(e.g., !sys ls -la, !sys whoami)\x1b[0m');
+                    
+                    term.writeln('\x1b[1;32m\r\n[ CONFIGURATION ]\x1b[0m');
+                    term.writeln('  \x1b[33mconfig <KEY> <MODEL>\x1b[0m Override current API key and active Gemini model manually.');
+                    term.writeln('                      \x1b[90mNote: Prefer using the UI Settings Cog for persistent configuration.\x1b[0m');
+
+                    term.writeln('\x1b[1;32m\r\n[ KNOWLEDGE BASE ]\x1b[0m');
+                    term.writeln('  \x1b[90mThe web interface automatically communicates with the Q-Local websocket agent if running on port 1984.\x1b[0m');
+                    term.writeln('  \x1b[90mTo download the agent, click the [⬇️ Download Q-Local] button in the upper right.\x1b[0m');
+
                     term.write('\r\nUSER > ');
                 } else if (trimmed.startsWith('config')) {
                     const parts = trimmed.split(' ');
@@ -99,10 +114,10 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
         },
         updateTheme: (theme: Theme) => {
             console.log('Updating theme:', theme);
-            term.options.theme = theme;
+            // Apply theme to xterm but force background to transparent so our containerBg shines through
+            term.options.theme = { ...theme, background: 'transparent' };
             if (theme.background) {
                 setContainerBg(theme.background);
-                document.body.style.backgroundColor = theme.background;
             }
         }
     }));

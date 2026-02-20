@@ -185,8 +185,7 @@ program
           if (process.env.NODE_ENV !== 'test') promptLoop();
       };
       
-      if (process.env.NODE_ENV !== 'test') promptLoop();
-      else await promptLoop();
+      await promptLoop();
       return;
     }
 
@@ -250,8 +249,7 @@ program
       }
       if (process.env.NODE_ENV !== 'test') chatLoop();
     };
-    if (process.env.NODE_ENV !== 'test') chatLoop();
-    else await chatLoop();
+    await chatLoop();
   });
 
 program
@@ -487,8 +485,8 @@ program
         type: 'list',
         name: 'model',
         message: 'Select Vessel (Model):',
-        choices: ['gemini-3.1-pro', 'gemini-3-flash', 'gemini-3-pro', 'gemini-2.5-pro', 'gemini-2.5-flash', 'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5'],
-        default: config.model
+        choices: ['gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-1.5-pro-latest', 'gemini-1.5-flash-latest', 'claude-3-5-sonnet-latest', 'claude-3-5-haiku-latest', 'claude-3-opus-latest'],
+        default: config.model || 'gemini-1.5-pro-latest'
       },
       {
         type: 'input',
@@ -512,9 +510,8 @@ export function runCLI(args?: string[]) {
   return program.parseAsync(args || process.argv);
 }
 
-// Only run if called directly
-import { fileURLToPath } from 'url';
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// Only run if called directly (not during testing)
+if (process.env.NODE_ENV !== 'test') {
   runCLI().catch((err) => {
     console.error(err);
     process.exit(1);
