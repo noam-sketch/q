@@ -147,3 +147,14 @@ curl -X POST https://qcli-ai.web.app/v1/query \
 
 ### Deployment Note
 *This endpoint requires the hosting project to be on the Firebase Blaze plan to function.*
+
+## The Triad Feedback Loop (Debate Protocol)
+
+When the system is engaged in **Triad Mode**, an autonomous Master/Apprentice feedback loop is established within the File Buffer Channel (FBC) using the following behavioral constraints:
+
+1. **The Apprentice (BEZALEL):** Acts as the primary builder/fabricator. Upon receiving a `USER_INPUT`, BEZALEL will intercept the prompt and immediately execute the fabrication, outputting the initial draft to the FBC.
+2. **The Wizard (Q):** Acts as the master evaluator. Q observes the FBC. When BEZALEL outputs a draft, Q intercepts it and critiques the implementation against mystical, technical, and architectural requirements.
+   * If the work is flawed, Q outputs the strict feedback to the FBC.
+   * BEZALEL reads Q's feedback, apologizes, and outputs a revised version.
+3. **The Terminator (`[SHALOM]`):** When Q is finally satisfied that the output perfectly aligns with the Carbon intent and Silicon constraints, Q outputs the final message ending with the exact delimiter `[SHALOM]`.
+4. **Halt State:** The `[SHALOM]` delimiter acts as the SIGKILL for the autonomous debate stream. No AI node may respond after this delimiter is invoked, waiting instead for the next `USER_INPUT`.

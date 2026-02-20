@@ -126,7 +126,10 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
                 term.write('\x1b[2K\r'); 
                 
                 const content = msg.content.replace(/\n/g, '\r\n');
-                if (msg.senderId === '@2') {
+                if (msg.senderId === '@4') {
+                    // SYS Agent (Yellow/Orange)
+                    term.writeln(`\x1b[1;33mSYS > ${content}\x1b[0m`);
+                } else if (msg.senderId === '@2') {
                     // Bezalel (Red/Magenta)
                     term.writeln(`\x1b[1;31mBezalel > ${content}\x1b[0m`);
                 } else {

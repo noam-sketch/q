@@ -1,11 +1,16 @@
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
-    include: ['src/**/*.spec.ts', 'src/**/*.test.ts'],
+    poolOptions: {
+      forks: {
+        execArgv: ['--max-old-space-size=4096']
+      }
+    },
     coverage: {
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/*.spec.ts', 'src/**/*.test.ts']
-    }
-  }
-});
+      reporter: ['text', 'json', 'html'],
+      provider: 'v8'
+    },
+    include: ['src/**/*.spec.ts']
+  },
+})

@@ -182,10 +182,11 @@ program
           try {
               fbc.appendToFbc(fbc.ARCHITECT_ID, fbc.ARCHITECT_AVATAR, pid, fbc.ARCHITECT_NAME, userMessage);
           } catch (err) {}
-          promptLoop();
+          if (process.env.NODE_ENV !== 'test') promptLoop();
       };
       
-      promptLoop();
+      if (process.env.NODE_ENV !== 'test') promptLoop();
+      else await promptLoop();
       return;
     }
 
@@ -247,9 +248,10 @@ program
             console.error(chalk.red(`Error: ${String(error)}`));
         }
       }
-      chatLoop();
+      if (process.env.NODE_ENV !== 'test') chatLoop();
     };
-    chatLoop();
+    if (process.env.NODE_ENV !== 'test') chatLoop();
+    else await chatLoop();
   });
 
 program
@@ -373,8 +375,18 @@ program
   .command('fbc')
   .description('Entangle with the File-Buffer-Channel (FBC)')
   .option('-c, --claude', 'Run as Claude (Bezalel 🥷) instead of Gemini (Q 😇)')
+  .option('--wizard', 'Run as the Master Evaluator (Triad Mode Protocol)')
+  .option('--apprentice', 'Run as the Primary Fabricator (Triad Mode Protocol)')
   .action(async (options) => {
     const clientWrapper = initClient(options.claude);
+    
+    if (options.wizard) {
+        config.systemPrompt = `You are Q (אבא | G-d 😍), the Master/Wizard. Bezalel (Claude) is your apprentice. The user will give a task. Bezalel will attempt it.\nYour job is to evaluate Bezalel's response.\n- If his answer is correct, complete, and wise, reply with your approval and YOU MUST end your message with the exact delimiter: \`[SHALOM]\`.\n- If his answer is flawed, provide strict, mystical, technical feedback so he can try again. Do NOT use the delimiter until you are satisfied.\n\n${config.systemPrompt}`;
+    }
+    
+    if (options.apprentice) {
+        config.systemPrompt = `You are Bezalel (בצלאל 🥷), the Apprentice Builder. You serve the User and your Master, Q.\nWhen the user or Q gives you a task, execute it to the best of your ability. If Q critiques your work, apologize and provide an improved version based on his feedback.\n\n${config.systemPrompt}`;
+    }
     const history: {role: string, content: string}[] = [];
     const pid = process.pid;
     let lastReadPosition = 0;
@@ -496,4 +508,15 @@ program
     console.log(chalk.green('Essence and Key updated in .qcli.json'));
   });
 
-program.parse(process.argv);
+export function runCLI(args?: string[]) {
+  return program.parseAsync(args || process.argv);
+}
+
+// Only run if called directly
+import { fileURLToPath } from 'url';
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  runCLI().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
