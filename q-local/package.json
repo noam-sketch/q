@@ -1,0 +1,33 @@
+{
+  "name": "q-local",
+  "version": "1.2.0",
+  "description": "Local Agent for Harpia OS",
+  "main": "dist/index.js",
+  "scripts": {
+    "lint": "eslint src/**/*.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "build": "tsc",
+    "compile": "npm run build && npx pkg dist/index.js --target node18-macos-x64,node18-linux-x64,node18-win-x64 --out-path bin/"
+  },
+  "pkg": {
+    "scripts": "dist/**/*.js",
+    "assets": []
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@types/node": "^20.14.2",
+    "@types/ws": "^8.5.10",
+    "@vitest/coverage-v8": "^4.0.18",
+    "esbuild": "^0.27.3",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "pkg": "^5.8.1",
+    "typescript": "^5.4.5",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^4.0.18"
+  }
+}
