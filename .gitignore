@@ -136,3 +136,4 @@ dist
 .pnp.*
 .qcli.json
 fbc/
+\n.qcli.json\n.qcli_fixed.json\nfbc/\n

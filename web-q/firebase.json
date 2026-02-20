@@ -12,7 +12,7 @@
     "rewrites": [
       {
         "source": "/v1/query",
-        "function": "query"
+        "function": "v1Query"
       },
       {
         "source": "**",

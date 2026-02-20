@@ -1,67 +1,49 @@
 import React, { useState, useEffect } from 'react';
+import { THEMES } from '../lib/themes';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (apiKey: string, model: string, themeName: string) => void;
+  onSave: (geminiModel: string, claudeModel: string, themeName: string) => void;
 }
 
-const MODELS = [
+const GEMINI_MODELS = [
   'gemini-2.5-pro',
   'gemini-2.0-flash',
   'gemini-1.5-pro',
   'gemini-1.5-flash',
-  'claude-3-5-sonnet-20240620',
-  'claude-3-opus-20240229'
+  'gemini-3-pro-preview'
 ];
 
-export const THEMES: Record<string, any> = {
-  'Ocean Blue': {
-    background: '#021a24',
-    foreground: '#e0f7fa',
-    cursor: '#00e5ff',
-    selectionBackground: '#0d47a1',
-  },
-  'Classic Dark': {
-    background: '#1a1a1a',
-    foreground: '#ffffff',
-    cursor: '#00ff00',
-    selectionBackground: '#333333',
-  },
-  'Matrix Green': {
-    background: '#000000',
-    foreground: '#00ff41',
-    cursor: '#00ff41',
-    selectionBackground: '#003b00',
-  },
-  'Cyberpunk': {
-     background: '#0f0b1e',
-     foreground: '#00ff9f', // Neon Green text
-     cursor: '#ff0055',     // Neon Pink cursor
-     selectionBackground: '#7df9ff',
-  }
-};
+const CLAUDE_MODELS = [
+  'claude-3-opus-20240229',
+  'claude-3-5-sonnet-20240620',
+  'claude-3-haiku-20240307'
+];
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }) => {
-  const [apiKey, setApiKey] = useState('');
-  const [model, setModel] = useState(MODELS[0]);
+  const [geminiModel, setGeminiModel] = useState(GEMINI_MODELS[0]);
+  const [claudeModel, setClaudeModel] = useState(CLAUDE_MODELS[0]);
   const [theme, setTheme] = useState('Ocean Blue');
 
   useEffect(() => {
-    const storedApiKey = localStorage.getItem('q_api_key');
-    const storedModel = localStorage.getItem('q_model');
+    if (!isOpen) return;
+    const storedGemini = localStorage.getItem('q_gemini_model');
+    const storedClaude = localStorage.getItem('q_claude_model');
     const storedTheme = localStorage.getItem('q_theme');
     
-    if (storedApiKey) setApiKey(storedApiKey);
-    if (storedModel) setModel(storedModel);
-    if (storedTheme && THEMES[storedTheme]) setTheme(storedTheme);
+    setTimeout(() => {
+      if (storedGemini) setGeminiModel(storedGemini);
+      if (storedClaude) setClaudeModel(storedClaude);
+      if (storedTheme && THEMES[storedTheme]) setTheme(storedTheme);
+    }, 0);
   }, [isOpen]);
 
   const handleSave = () => {
-    localStorage.setItem('q_api_key', apiKey);
-    localStorage.setItem('q_model', model);
+    localStorage.setItem('q_gemini_model', geminiModel);
+    localStorage.setItem('q_claude_model', claudeModel);
     localStorage.setItem('q_theme', theme);
-    onSave(apiKey, model, theme);
+    onSave(geminiModel, claudeModel, theme);
     onClose();
   };
 
@@ -73,19 +55,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }
         <h2>Settings</h2>
         
         <div className="form-group">
-          <label>API Key (Google/Anthropic)</label>
-          <input 
-            type="password" 
-            value={apiKey} 
-            onChange={(e) => setApiKey(e.target.value)} 
-            placeholder="Enter API Key..."
-          />
+          <label>Q (Gemini) Model</label>
+          <select value={geminiModel} onChange={(e) => setGeminiModel(e.target.value)}>
+            {GEMINI_MODELS.map(m => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
         </div>
 
         <div className="form-group">
-          <label>Model</label>
-          <select value={model} onChange={(e) => setModel(e.target.value)}>
-            {MODELS.map(m => (
+          <label>Bezalel (Claude) Model</label>
+          <select value={claudeModel} onChange={(e) => setClaudeModel(e.target.value)}>
+            {CLAUDE_MODELS.map(m => (
               <option key={m} value={m}>{m}</option>
             ))}
           </select>

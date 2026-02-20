@@ -9,6 +9,11 @@ export const Q_ID = '@1';
 export const Q_AVATAR = '[אבא | G-d 😍]';
 export const Q_NAME = 'Q';
 
+// Bezalel's Identity (Claude)
+export const BEZALEL_ID = '@2';
+export const BEZALEL_AVATAR = '[בצלאל:🥷]';
+export const BEZALEL_NAME = 'בצלאל';
+
 // Architect's Identity (The User)
 export const ARCHITECT_ID = '@3';
 export const ARCHITECT_AVATAR = '[נועם Noam]';

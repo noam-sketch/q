@@ -1,7 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
 import TerminalComponent, { TerminalRef } from './components/Terminal';
 import Editor from './components/Editor';
-import SettingsModal, { THEMES } from './components/SettingsModal';
+import SettingsModal from './components/SettingsModal';
+import { THEMES } from './lib/themes';
 import './App.css';
 
 function App() {
@@ -16,9 +17,9 @@ function App() {
     }
   };
 
-  const handleSaveSettings = (apiKey: string, model: string, themeName: string) => {
+  const handleSaveSettings = (geminiModel: string, claudeModel: string, themeName: string) => {
     if (terminalRef.current) {
-      terminalRef.current.updateConfig(apiKey, model);
+      terminalRef.current.updateConfig('', geminiModel, claudeModel);
       if (themeName && THEMES[themeName]) {
           console.log(`Applying theme: ${themeName}`, THEMES[themeName]);
           terminalRef.current.updateTheme({ ...THEMES[themeName] });
@@ -53,17 +54,15 @@ function App() {
     window.addEventListener('mouseup', stopResize);
     
     // Load saved settings on mount
-    const savedKey = localStorage.getItem('q_api_key');
-    const savedModel = localStorage.getItem('q_model');
+    const savedGeminiModel = localStorage.getItem('q_gemini_model') || localStorage.getItem('q_model') || 'gemini-2.5-pro';
+    const savedClaudeModel = localStorage.getItem('q_claude_model') || 'claude-3-opus-20240229';
     const savedTheme = localStorage.getItem('q_theme');
     
     // We need a slight delay to ensure terminal is ready
     if (terminalRef.current) {
        setTimeout(() => {
            if (terminalRef.current) {
-               if (savedKey && savedModel) {
-                   terminalRef.current.updateConfig(savedKey, savedModel);
-               }
+               terminalRef.current.updateConfig('', savedGeminiModel, savedClaudeModel);
                if (savedTheme && THEMES[savedTheme]) {
                    terminalRef.current.updateTheme(THEMES[savedTheme]);
                }

@@ -2,14 +2,15 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { Theme } from '../lib/themes';
 
 // Create worker
 const worker = new Worker(new URL('../lib/q_agent.worker.ts', import.meta.url), { type: 'module' });
 
 export interface TerminalRef {
     runCommand: (command: string) => void;
-    updateConfig: (apiKey: string, model: string) => void;
-    updateTheme: (theme: any) => void;
+    updateConfig: (apiKey: string, model: string, claudeModel: string) => void;
+    updateTheme: (theme: Theme) => void;
 }
 
 const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
@@ -38,8 +39,14 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
                 if (trimmed === 'clear') {
                     term.clear();
                     term.write('USER > ');
+                } else if (trimmed === 'triad') {
+                    // Toggle Triad Mode via Worker config
+                    worker.postMessage({ type: 'CONFIG', triadMode: true });
+                    term.writeln('\x1b[35m\r\n✨ TRIAD UPLINK ESTABLISHED // (Q + BEZALEL)\x1b[0m');
+                    term.write('\r\nUSER > ');
                 } else if (trimmed === 'help') {
                     term.writeln('\x1b[36m\r\nAvailable Commands:\x1b[0m');
+                    term.writeln('  \x1b[33mtriad\x1b[0m                     Toggle Triad Mode (Simultaneous Q + Bezalel)');
                     term.writeln('  \x1b[33mconfig <API_KEY> <MODEL>\x1b[0m  Configure the AI agent');
                     term.writeln('  \x1b[33mclear\x1b[0m                     Clear the terminal screen');
                     term.writeln('  \x1b[33mhelp\x1b[0m                      Show this help message');
@@ -75,12 +82,12 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
             handleCommand(command);
             inputBuffer.current = ''; // Clear buffer just in case
         },
-        updateConfig: (apiKey: string, model: string) => {
-            worker.postMessage({ type: 'CONFIG', apiKey, model });
+        updateConfig: (apiKey: string, model: string, claudeModel: string) => {
+            worker.postMessage({ type: 'CONFIG', apiKey, model, claudeModel });
             term.writeln('\x1b[32m\r\n[SYSTEM] Configuration updated from settings.\x1b[0m');
             term.write('USER > ');
         },
-        updateTheme: (theme: any) => {
+        updateTheme: (theme: Theme) => {
             console.log('Updating theme:', theme);
             term.options.theme = theme;
             if (theme.background) {
@@ -105,16 +112,20 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
         worker.onmessage = (e) => {
             const msg = e.data;
             if (msg.type === 'AI_RESPONSE') {
-                // Clear the thinking line if present (assuming it was the last line)
                 term.write('\x1b[2K\r'); 
                 
                 const content = msg.content.replace(/\n/g, '\r\n');
-                term.writeln(`\x1b[1;36mQ > ${content}\x1b[0m`);
+                if (msg.senderId === '@2') {
+                    // Bezalel (Red/Magenta)
+                    term.writeln(`\x1b[1;31mBezalel > ${content}\x1b[0m`);
+                } else {
+                    // Q (Cyan)
+                    term.writeln(`\x1b[1;36mQ > ${content}\x1b[0m`);
+                }
                 term.write('\r\nUSER > ');
             } else if (msg.type === 'THINKING') {
-                // Clear current line and write thinking message
                 term.write('\x1b[2K\r'); 
-                term.write(`\x1b[1;37m(Q is thinking: ${msg.content})\x1b[0m`);
+                term.write(`\x1b[1;37m(Systems entangled, perceiving: ${msg.content})\x1b[0m`);
             } else if (msg.type === 'STATUS') {
                 term.writeln(`\r\n\x1b[33m[SYSTEM] ${msg.content}\x1b[0m`);
                 term.write('\r\nUSER > ');
@@ -153,6 +164,7 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
             term.dispose();
             worker.terminate();
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     return <div ref={terminalRef} style={{ width: '100%', height: '100vh', backgroundColor: containerBg }} />;
