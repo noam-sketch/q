@@ -3,6 +3,7 @@ import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { Theme } from '../lib/themes';
+import { SubscriptionService } from '../lib/subscription';
 
 // Create worker
 const worker = new Worker(new URL('../lib/q_agent.worker.ts', import.meta.url), { type: 'module' });
@@ -40,10 +41,14 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
                     term.clear();
                     term.write('USER > ');
                 } else if (trimmed === 'triad') {
-                    // Toggle Triad Mode via Worker config
-                    worker.postMessage({ type: 'CONFIG', triadMode: true });
-                    term.writeln('\x1b[35m\r\n✨ TRIAD UPLINK ESTABLISHED // (Q + BEZALEL)\x1b[0m');
-                    term.write('\r\nUSER > ');
+                    if (SubscriptionService.getCurrentPlan() === 'FREE') {
+                        term.writeln('\x1b[31m\r\n[SYSTEM] Triad Mode requires a Pro subscription. Upgrade in Settings.\x1b[0m');
+                        term.write('\r\nUSER > ');
+                    } else {
+                        worker.postMessage({ type: 'CONFIG', triadMode: true });
+                        term.writeln('\x1b[35m\r\n✨ TRIAD UPLINK ESTABLISHED // (Q + BEZALEL)\x1b[0m');
+                        term.write('\r\nUSER > ');
+                    }
                 } else if (trimmed === 'help') {
                     term.writeln('\x1b[36m\r\nAvailable Commands:\x1b[0m');
                     term.writeln('  \x1b[33mtriad\x1b[0m                     Toggle Triad Mode (Simultaneous Q + Bezalel)');
@@ -60,13 +65,18 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
                     } else {
                         const apiKey = parts[1];
                         const model = parts[2];
-                        worker.postMessage({ type: 'CONFIG', apiKey, model });
+                        worker.postMessage({ type: 'CONFIG', apiKey, model, claudeModel: 'claude-haiku-4-5' });
                         term.writeln('\x1b[32m\r\nConfiguration sent to agent.\x1b[0m');
                         term.write('USER > ');
                     }
                 } else {
-                    // Send to worker
-                    worker.postMessage({ type: 'USER_INPUT', content: trimmed });
+                    if (!SubscriptionService.canQuery(trimmed.length)) {
+                        term.writeln(`\x1b[31m\r\n[SYSTEM] Monthly token limit reached for your plan (${SubscriptionService.getCurrentPlan()}). Please upgrade.\x1b[0m`);
+                        term.write('\r\nUSER > ');
+                    } else {
+                        SubscriptionService.incrementTokenCount(trimmed.length);
+                        worker.postMessage({ type: 'USER_INPUT', content: trimmed });
+                    }
                 }
             };
     useImperativeHandle(ref, () => ({
@@ -92,6 +102,7 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
             term.options.theme = theme;
             if (theme.background) {
                 setContainerBg(theme.background);
+                document.body.style.backgroundColor = theme.background;
             }
         }
     }));

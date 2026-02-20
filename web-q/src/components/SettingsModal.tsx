@@ -16,9 +16,9 @@ const GEMINI_MODELS = [
 ];
 
 const CLAUDE_MODELS = [
-  'claude-3-opus-20240229',
-  'claude-3-5-sonnet-20240620',
-  'claude-3-haiku-20240307'
+  'claude-sonnet-4-6',
+  'claude-opus-4-6',
+  'claude-haiku-4-5'
 ];
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, onSave }) => {

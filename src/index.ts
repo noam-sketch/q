@@ -475,7 +475,7 @@ program
         type: 'list',
         name: 'model',
         message: 'Select Vessel (Model):',
-        choices: ['gemini-3.1-pro', 'gemini-3-flash', 'gemini-3-pro', 'gemini-2.5-pro', 'gemini-2.5-flash', 'claude-3-5-sonnet-20240620', 'claude-3-opus-20240229'],
+        choices: ['gemini-3.1-pro', 'gemini-3-flash', 'gemini-3-pro', 'gemini-2.5-pro', 'gemini-2.5-flash', 'claude-sonnet-4-6', 'claude-opus-4-6', 'claude-haiku-4-5'],
         default: config.model
       },
       {

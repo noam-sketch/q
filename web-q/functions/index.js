@@ -59,7 +59,11 @@ exports.v1Query = onRequest({ secrets: [geminiApiKey, anthropicApiKey], maxInsta
 
           const response = await anthropicReq.json();
           if (!anthropicReq.ok) {
-              throw new Error(response.error?.message || "Anthropic API Error");
+              const errMsg = response.error?.message || "Anthropic API Error";
+              if (errMsg.includes("model:")) {
+                  throw new Error(`Anthropic Account Restricted (No access to ${activeModel} or zero credit balance).`);
+              }
+              throw new Error(errMsg);
           }
           if (response.content && response.content[0] && response.content[0].type === 'text') {
               text = response.content[0].text;
