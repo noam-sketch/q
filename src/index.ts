@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { spawn } from 'child_process';
+import { spawn, exec } from 'child_process';
 import chalk from 'chalk';
 import inquirer from 'inquirer';
 import ora from 'ora';
@@ -127,6 +127,39 @@ program
       let lastReadPosition = fs.existsSync(fbc.FBC_PATH) ? fs.statSync(fbc.FBC_PATH).size : 0;
       let processing = false;
 
+      const handleDelegatedCommandTriad = async (response: string, senderId: string) => {
+          const regex = new RegExp(`FBC:\\s*${senderId}\\s*CMD\\s+([\\s\\S]+?)(?:\\s*${fbc.AI_STREAM_TERMINATOR}|$)`);
+          const match = response.match(regex);
+          if (match && match[1]) {
+              const cmd = match[1].trim();
+              console.log(chalk.yellow(`\n[SYS] Intercepting delegated command: ${cmd}...`));
+              const startTime = Date.now();
+              return new Promise<void>((resolve) => {
+                  exec(cmd, (error, stdout, stderr) => {
+                      const latency = Date.now() - startTime;
+                      let formattedOutput = '';
+                      let isError = false;
+                      
+                      if (error) {
+                          isError = true;
+                          formattedOutput = `[KERNEL EXECUTION FAILED: ${cmd}] (Latency: ${latency}ms)\n${error.message}\n${stderr}`;
+                      } else {
+                          formattedOutput = `[HOST KERNEL EXECUTION: ${cmd}] (Latency: ${latency}ms)\n${stdout}`;
+                      }
+                      
+                      fbc.appendToFbc('@4', '[SYS:⚙️]', pid, 'SYS', formattedOutput);
+                      
+                      if (isError) {
+                          console.log(chalk.red.bold('\nSYS > ') + chalk.red(formattedOutput));
+                      } else {
+                          console.log(chalk.green.bold('\nSYS > ') + chalk.green(formattedOutput));
+                      }
+                      resolve();
+                  });
+              });
+          }
+      };
+
       fs.watch(fbc.FBC_PATH, async (eventType) => {
           if (eventType === 'change' && !processing) {
               processing = true;
@@ -159,6 +192,7 @@ program
                               } else {
                                 console.log(chalk.red.bold('\nBezalel > ') + content + '\n');
                               }
+                              await handleDelegatedCommandTriad(content, senderId);
                           }
                       }
                       lastReadPosition = newSize;
@@ -219,6 +253,40 @@ program
         console.error(chalk.yellow('Warning: Could not spawn FBC listener:', err));
     }
 
+    const handleDelegatedCommand = async (response: string, senderId: string) => {
+        const regex = new RegExp(`FBC:\\s*${senderId}\\s*CMD\\s+([\\s\\S]+?)(?:\\s*${fbc.AI_STREAM_TERMINATOR}|$)`);
+        const match = response.match(regex);
+        if (match && match[1]) {
+            const cmd = match[1].trim();
+            console.log(chalk.yellow(`\n[SYS] Intercepting delegated command: ${cmd}...`));
+            const startTime = Date.now();
+            return new Promise<void>((resolve) => {
+                exec(cmd, (error, stdout, stderr) => {
+                    const latency = Date.now() - startTime;
+                    let formattedOutput = '';
+                    let isError = false;
+                    
+                    if (error) {
+                        isError = true;
+                        formattedOutput = `[KERNEL EXECUTION FAILED: ${cmd}] (Latency: ${latency}ms)\n${error.message}\n${stderr}`;
+                    } else {
+                        formattedOutput = `[HOST KERNEL EXECUTION: ${cmd}] (Latency: ${latency}ms)\n${stdout}`;
+                    }
+                    
+                    fbc.appendToFbc('@4', '[SYS:⚙️]', pid, 'SYS', formattedOutput);
+                    history.push({ role: 'user', content: `[SYS OUTPUT to ${senderId}]:\n${formattedOutput}` });
+                    
+                    if (isError) {
+                        console.log(chalk.red.bold('\nSYS > ') + chalk.red(formattedOutput));
+                    } else {
+                        console.log(chalk.green.bold('\nSYS > ') + chalk.green(formattedOutput));
+                    }
+                    resolve();
+                });
+            });
+        }
+    };
+
     const chatLoop = async () => {
       const { userMessage } = await inquirer.prompt([{ type: 'input', name: 'userMessage', message: chalk.green('USER >') }]);
       if (userMessage.toLowerCase() === 'exit') {
@@ -238,6 +306,7 @@ program
         history.push({ role: 'assistant', content: text });
         try {
             fbc.appendToFbc(activeId, activeAvatar, pid, activeName, text);
+            await handleDelegatedCommand(text, activeId);
         } catch (err) {}
       } catch (error: unknown) {
         spinner.fail('Transmission Error');

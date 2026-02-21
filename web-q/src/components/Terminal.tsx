@@ -2,7 +2,7 @@ import { Terminal } from 'xterm';
 import { FitAddon } from 'xterm-addon-fit';
 import 'xterm/css/xterm.css';
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { Theme } from '../lib/themes';
+import type { Theme } from '../lib/themes';
 import { SubscriptionService } from '../lib/subscription';
 
 // Create worker
@@ -10,6 +10,7 @@ const worker = new Worker(new URL('../lib/q_agent.worker.ts', import.meta.url), 
 
 export interface TerminalRef {
     runCommand: (command: string) => void;
+    setChannel: (channelName: string) => void;
     updateConfig: (apiKey: string, model: string, claudeModel: string) => void;
     updateTheme: (theme: Theme) => void;
 }
@@ -95,6 +96,12 @@ const TerminalComponent = forwardRef<TerminalRef, object>((_, ref) => {
                 }
             };
     useImperativeHandle(ref, () => ({
+        setChannel: (channelName: string) => {
+            worker.postMessage({ type: 'FBC_CHANNEL', channel: channelName });
+            term.clear();
+            term.writeln(`\x1b[36m\r\n[SYSTEM] FBC Channel switched to ${channelName}\x1b[0m`);
+            term.write('\r\nUSER > ');
+        },
         runCommand: (command: string) => {
             // Write command to terminal as if user typed it
             // Assuming terminal is at prompt

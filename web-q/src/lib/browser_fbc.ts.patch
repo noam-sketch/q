@@ -1,0 +1,65 @@
+--- web-q/src/lib/browser_fbc.ts
++++ web-q/src/lib/browser_fbc.ts
+@@ -1,4 +1,3 @@
+-export const FBC_FILENAME = 'q-fbc.md';
+ export const FBC_DIR_HANDLE_KEY = 'q-fbc-dir';
+ 
+ export interface FBCService {
+@@ -7,16 +6,52 @@
+   read(startPos: number): Promise<{ content: string; newPos: number }>;
+   getSize(): Promise<number>;
++  clear(): Promise<void>;
++  setFilename(name: string): Promise<void>;
++  getFilename(): string;
++  listChannels(): Promise<string[]>;
+ }
+ 
+ export class OPFSService implements FBCService {
+   private root: FileSystemDirectoryHandle | null = null;
+   private fileHandle: FileSystemFileHandle | null = null;
++  private currentFilename: string = 'q-fbc.md';
+ 
+   async init(): Promise<void> {
+     this.root = await navigator.storage.getDirectory();
+-    this.fileHandle = await this.root.getFileHandle(FBC_FILENAME, { create: true });
++    this.fileHandle = await this.root.getFileHandle(this.currentFilename, { create: true });
++  }
++
++  async setFilename(name: string): Promise<void> {
++    this.currentFilename = name;
++    if (this.root) {
++      this.fileHandle = await this.root.getFileHandle(this.currentFilename, { create: true });
++    } else {
++      await this.init();
++    }
++  }
++
++  getFilename(): string {
++    return this.currentFilename;
++  }
++
++  async listChannels(): Promise<string[]> {
++    if (!this.root) {
++      this.root = await navigator.storage.getDirectory();
++    }
++    const channels: string[] = [];
++    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
++    // @ts-ignore
++    for await (const [name, handle] of this.root.entries()) {
++      if (handle.kind === 'file' && name.endsWith('.md')) {
++        channels.push(name);
++      }
++    }
++    return channels;
+   }
+ 
++  async clear(): Promise<void> {
++    if (!this.fileHandle) await this.init();
++    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
++    // @ts-ignore
++    const writable = await this.fileHandle!.createWritable({ keepExistingData: false });
++    await writable.truncate(0);
++    await writable.close();
++  }
++
+   async append(message: string): Promise<void> {

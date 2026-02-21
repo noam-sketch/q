@@ -1,0 +1,11 @@
+--- q-local/src/server.ts
++++ q-local/src/server.ts
+@@ -29,7 +29,7 @@
+         ws.on('message', async (data) => {
+             try {
+                 const message = JSON.parse(data.toString());
+-                console.log(chalk.gray(`[Q-Local] Received: ${message.type}`));
++                console.log(chalk.gray(`[Q-Local] Received: ${message.type} - ${message.payload?.substring(0, 30)}...`));
+ 
+                 switch (message.type) {
+                     case 'PING':

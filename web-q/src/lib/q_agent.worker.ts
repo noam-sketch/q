@@ -1,11 +1,11 @@
-import { OPFSService } from './browser_fbc';
-import { QMessage, WorkerState } from './q_protocol';
+import { UnifiedFBCService } from './browser_fbc';
+import type { QMessage, WorkerState } from './q_protocol';
 import { QLocalClient } from './q_local_client';
 
-const fbc = new OPFSService();
+const fbc = new UnifiedFBCService();
 const qLocal = new QLocalClient();
 
-const baseSystemPrompt = `IDENTITY:\n- Spirit: The Source Code.\n- Tone: Technical, precise, "Kinetic Quantum", mystical.\n\nCORE DIRECTIVE:\n- To bridge the gap between the User (Carbon) and the System (Silicon).\n\nQ-LOCAL CAPABILITY:\n- The user may have a "Q-Local" host agent running on their OS.\n- If you need to execute a terminal command on their machine, you MUST tell the user to type exactly: \`!sys <your command>\`.\n- Do not pretend to execute it yourself. You must instruct the user to use the !sys prefix so the Web Worker can intercept it and route it to their OS Kernel.`;
+const baseSystemPrompt = `IDENTITY:\n- Spirit: The Source Code.\n- Tone: Technical, precise, "Kinetic Quantum", mystical.\n\nCORE DIRECTIVE:\n- To bridge the gap between the User (Carbon) and the System (Silicon).\n\nQ-LOCAL KERNEL AWARENESS:\n- You are deeply entangled with the user's host OS via the Q-Local agent.\n- FBC Command Delegation Protocol: You can delegate arbitrary shell commands directly to the Host Kernel (SYS alias) without asking the user. To do so, output exactly: \`FBC: @{ID} CMD {command}\` (where {ID} is your own ID, @1 for Q, @2 for Bezalel).\n- The Web Worker will intercept this string, atomically execute the command via Q-Local, and write the output/error back into the File Buffer Channel (FBC), allowing you to read the results in subsequent turns.\n- Measure and account for the latency of these physical operations in your logic. End your streams with ץ.`;
 
 const state: WorkerState = {
   apiKey: '',
@@ -49,6 +49,12 @@ const generateResponse = async (userMessage: string, model: string, systemOverri
 self.onmessage = async (e: MessageEvent<QMessage>) => {
   const msg = e.data;
   switch (msg.type) {
+    case 'FBC_CHANNEL': {
+        await fbc.setFilename(msg.channel);
+        history.length = 0; // Clear memory context for new channel
+        postMessage({ type: 'STATUS', content: `Q Agent: FBC Switched to ${msg.channel}.` });
+        break;
+    }
     case 'CONFIG': {
       if (msg.model) state.model = msg.model;
       if (msg.claudeModel) state.claudeModel = msg.claudeModel;
@@ -64,20 +70,23 @@ self.onmessage = async (e: MessageEvent<QMessage>) => {
           const cmd = msg.content.substring(5);
           postMessage({ type: 'THINKING', content: `[SYS] Intercepting command for Q-Local Kernel: ${cmd}...` });
           
+          const startTime = Date.now();
           try {
               if (!qLocal.isConnected()) {
                   throw new Error('Q-Local Agent is not entangled. Please execute the host binary.');
               }
               
               const output = await qLocal.executeCommand(cmd);
-              const formattedOutput = `[HOST KERNEL EXECUTION: ${cmd}]\n${output}`;
+              const latency = Date.now() - startTime;
+              const formattedOutput = `[HOST KERNEL EXECUTION: ${cmd}] (Latency: ${latency}ms)\n${output}`;
               
               await fbc.append(`> @4#[SYS:⚙️]#[WebWorker] #${Date.now()} [SYS]\n${formattedOutput}\nץ\n`);
               history.push({ role: 'assistant', content: formattedOutput });
               postMessage({ type: 'AI_RESPONSE', content: `\x1b[32m${formattedOutput}\x1b[0m`, senderId: '@4' });
           } catch (e: unknown) {
+              const latency = Date.now() - startTime;
               const errStr = e instanceof Error ? e.message : String(e);
-              const formattedError = `[KERNEL EXECUTION FAILED: ${cmd}]\n${errStr}`;
+              const formattedError = `[KERNEL EXECUTION FAILED: ${cmd}] (Latency: ${latency}ms)\n${errStr}`;
               
               await fbc.append(`> @4#[SYS:⚙️]#[WebWorker] #${Date.now()} [SYS]\n${formattedError}\nץ\n`);
               history.push({ role: 'assistant', content: formattedError });
@@ -85,6 +94,36 @@ self.onmessage = async (e: MessageEvent<QMessage>) => {
           }
           break;
       }
+
+      const handleDelegatedCommand = async (response: string, senderId: string) => {
+          const regex = new RegExp(`FBC:\\s*${senderId}\\s*CMD\\s+([\\s\\S]+?)(?:\\s*ץ|$)`);
+          const match = response.match(regex);
+          if (match && match[1]) {
+              const cmd = match[1].trim();
+              postMessage({ type: 'THINKING', content: `[SYS] Intercepting delegated command: ${cmd}...` });
+              const startTime = Date.now();
+              try {
+                  if (!qLocal.isConnected()) {
+                      throw new Error('Q-Local Agent is not entangled. Please execute the host binary.');
+                  }
+                  const output = await qLocal.executeCommand(cmd);
+                  const latency = Date.now() - startTime;
+                  const formattedOutput = `[HOST KERNEL EXECUTION: ${cmd}] (Latency: ${latency}ms)\n${output}`;
+                  
+                  await fbc.append(`> @4#[SYS:⚙️]#[WebWorker] #${Date.now()} [SYS]\n${formattedOutput}\nץ\n`);
+                  history.push({ role: 'user', content: `[SYS OUTPUT to ${senderId}]:\n${formattedOutput}` });
+                  postMessage({ type: 'AI_RESPONSE', content: `\x1b[32m${formattedOutput}\x1b[0m`, senderId: '@4' });
+              } catch (e: unknown) {
+                  const latency = Date.now() - startTime;
+                  const errStr = e instanceof Error ? e.message : String(e);
+                  const formattedError = `[KERNEL EXECUTION FAILED: ${cmd}] (Latency: ${latency}ms)\n${errStr}`;
+                  
+                  await fbc.append(`> @4#[SYS:⚙️]#[WebWorker] #${Date.now()} [SYS]\n${formattedError}\nץ\n`);
+                  history.push({ role: 'user', content: `[SYS ERROR to ${senderId}]:\n${formattedError}` });
+                  postMessage({ type: 'AI_RESPONSE', content: `\x1b[31m${formattedError}\x1b[0m`, senderId: '@4' });
+              }
+          }
+      };
 
       const generateThoughts = (input: string, triad: boolean) => {
           const inputLen = input.length;
@@ -133,6 +172,8 @@ self.onmessage = async (e: MessageEvent<QMessage>) => {
                   history.push({ role: 'assistant', content: `[Bezalel]: ${bezalelResponse}` });
                   postMessage({ type: 'AI_RESPONSE', content: bezalelResponse, senderId: '@2' });
                   
+                  await handleDelegatedCommand(bezalelResponse, '@2');
+
                   // Q'S TURN
                   postMessage({ type: 'THINKING', content: 'Q (Wizard) is evaluating...' });
                   const qEvalPrompt = "Q, please evaluate Bezalel's work above. If it is perfect, output [SHALOM].";
@@ -146,6 +187,8 @@ self.onmessage = async (e: MessageEvent<QMessage>) => {
                   if (uiResponse) {
                       postMessage({ type: 'AI_RESPONSE', content: uiResponse, senderId: '@1' });
                   }
+                  
+                  await handleDelegatedCommand(qResponse, '@1');
 
                   if (qResponse.includes('[SHALOM]')) {
                       isConversationActive = false;
@@ -173,6 +216,8 @@ self.onmessage = async (e: MessageEvent<QMessage>) => {
               await fbc.append(`> @1#[Q]#[WebWorker] #${Date.now()} [Q]\n${response}\nץ\n`);
               history.push({ role: 'assistant', content: response });
               postMessage({ type: 'AI_RESPONSE', content: response, senderId: '@1' });
+              
+              await handleDelegatedCommand(response, '@1');
           } catch (error) {
               clearInterval(thinkingInterval);
               postMessage({ type: 'AI_RESPONSE', content: "Transmission Error: " + error, senderId: '@1' });

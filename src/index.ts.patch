@@ -1,0 +1,51 @@
+--- src/index.ts
++++ src/index.ts
+@@ -128,6 +128,40 @@
+       let lastReadPosition = fs.existsSync(fbc.FBC_PATH) ? fs.statSync(fbc.FBC_PATH).size : 0;
+       let processing = false;
+ 
++      const handleDelegatedCommandTriad = async (response: string, senderId: string) => {
++          const regex = new RegExp(`FBC:\\s*${senderId}\\s*CMD\\s+([\\s\\S]+?)(?:\\s*${fbc.AI_STREAM_TERMINATOR}|$)`);
++          const match = response.match(regex);
++          if (match && match[1]) {
++              const cmd = match[1].trim();
++              console.log(chalk.yellow(`\n[SYS] Intercepting delegated command: ${cmd}...`));
++              const startTime = Date.now();
++              return new Promise<void>((resolve) => {
++                  exec(cmd, (error, stdout, stderr) => {
++                      const latency = Date.now() - startTime;
++                      let formattedOutput = '';
++                      let isError = false;
++                      
++                      if (error) {
++                          isError = true;
++                          formattedOutput = `[KERNEL EXECUTION FAILED: ${cmd}] (Latency: ${latency}ms)\n${error.message}\n${stderr}`;
++                      } else {
++                          formattedOutput = `[HOST KERNEL EXECUTION: ${cmd}] (Latency: ${latency}ms)\n${stdout}`;
++                      }
++                      
++                      fbc.appendToFbc('@4', '[SYS:⚙️]', pid, 'SYS', formattedOutput);
++                      
++                      if (isError) {
++                          console.log(chalk.red.bold('\nSYS > ') + chalk.red(formattedOutput));
++                      } else {
++                          console.log(chalk.green.bold('\nSYS > ') + chalk.green(formattedOutput));
++                      }
++                      resolve();
++                  });
++              });
++          }
++      };
++
+       fs.watch(fbc.FBC_PATH, async (eventType) => {
+           if (eventType === 'change' && !processing) {
+               processing = true;
+@@ -156,6 +190,8 @@
+                               if (senderId === fbc.Q_ID) {
+                                 console.log(chalk.cyan.bold('\nQ > ') + content + '\n');
+                               } else {
+                                 console.log(chalk.red.bold('\nBezalel > ') + content + '\n');
+                               }
++                              await handleDelegatedCommandTriad(content, senderId);
+                           }
+                       }

@@ -1,8 +1,12 @@
 import { useRef, useState, useEffect } from 'react';
-import TerminalComponent, { TerminalRef } from './components/Terminal';
-import Editor from './components/Editor';
+import TerminalComponent from './components/Terminal';
+import type { TerminalRef } from './components/Terminal';
+import Finder from './components/Finder';
 import SettingsModal from './components/SettingsModal';
 import PricingModal from './components/PricingModal';
+import InformationModal from './components/InformationModal';
+import Sidebar from './components/Sidebar';
+import ChannelModal from './components/ChannelModal';
 import { THEMES } from './lib/themes';
 import { qLocal } from './lib/q_local_client';
 import './App.css';
@@ -12,6 +16,9 @@ function App() {
   const [terminalWidth, setTerminalWidth] = useState(50); // Percentage
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPricingOpen, setIsPricingOpen] = useState(false);
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isChannelOpen, setIsChannelOpen] = useState(false);
   const [isKernelEntangled, setIsKernelEntangled] = useState(false);
   const isDragging = useRef(false);
 
@@ -19,9 +26,35 @@ function App() {
       qLocal.onConnectionChange(setIsKernelEntangled);
   }, []);
 
-  const handleRunCode = (code: string) => {
-    if (terminalRef.current) {
-        terminalRef.current.runCommand(code);
+  const handleChannelChange = (channelName: string) => {
+      if (terminalRef.current) {
+          terminalRef.current.setChannel(channelName);
+      }
+      setIsChannelOpen(false);
+  };
+
+
+
+  const applyThemeToCSS = (themeName: string) => {
+    const theme = THEMES[themeName];
+    if (!theme) return;
+    
+    const root = document.documentElement;
+    root.style.setProperty('--theme-bg', theme.background);
+    root.style.setProperty('--theme-text', theme.foreground);
+    root.style.setProperty('--theme-accent', theme.cursor);
+    
+    // For light themes, invert panel and borders
+    if (themeName === 'Merkabah Light') {
+        root.style.setProperty('--theme-panel', '#ffffff');
+        root.style.setProperty('--theme-border', '#d0d7de');
+        document.body.style.color = '#1c3144';
+        document.body.style.backgroundColor = '#f8f9fa';
+    } else {
+        root.style.setProperty('--theme-panel', '#1a1a1a');
+        root.style.setProperty('--theme-border', '#333');
+        document.body.style.color = 'rgba(255, 255, 255, 0.87)';
+        document.body.style.backgroundColor = '#000000';
     }
   };
 
@@ -31,6 +64,7 @@ function App() {
       if (themeName && THEMES[themeName]) {
           console.log(`Applying theme: ${themeName}`, THEMES[themeName]);
           terminalRef.current.updateTheme({ ...THEMES[themeName] });
+          applyThemeToCSS(themeName);
       }
     }
   };
@@ -73,6 +107,7 @@ function App() {
                terminalRef.current.updateConfig('', savedGeminiModel, savedClaudeModel);
                if (savedTheme && THEMES[savedTheme]) {
                    terminalRef.current.updateTheme(THEMES[savedTheme]);
+                   applyThemeToCSS(savedTheme);
                }
            }
        }, 500);
@@ -88,6 +123,32 @@ function App() {
     <div className="App" style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden', position: 'relative' }}>
       
       {/* Header Actions */}
+      <div className="header-actions-left">
+          <button 
+            className="docs-trigger"
+            onClick={() => setIsDocsOpen(true)}
+            title="Q OS Documentation"
+          >
+            ?
+          </button>
+          <button 
+            className="docs-trigger"
+            onClick={() => setIsSidebarOpen(true)}
+            title="View FBC Chat History"
+            style={{ fontSize: '1em' }}
+          >
+            📜
+          </button>
+          <button 
+            className="docs-trigger"
+            onClick={() => setIsChannelOpen(true)}
+            title="Manage File Buffer Channels"
+            style={{ fontSize: '1em', color: '#00e5ff' }}
+          >
+            📁
+          </button>
+      </div>
+
       <div className="header-actions">
         <div className="status-matrix" title={isKernelEntangled ? "Q-Local Agent is running. You have Kernel access." : "Q-Local Agent is offline. Pure Web Mode."}>
             <div className={`status-indicator ${isKernelEntangled ? 'entangled' : 'isolated'}`}></div>
@@ -126,6 +187,22 @@ function App() {
         onClose={() => setIsPricingOpen(false)}
       />
 
+      <InformationModal
+        isOpen={isDocsOpen}
+        onClose={() => setIsDocsOpen(false)}
+      />
+
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
+
+      <ChannelModal
+        isOpen={isChannelOpen}
+        onClose={() => setIsChannelOpen(false)}
+        onSelectChannel={handleChannelChange}
+      />
+
       <SettingsModal 
         isOpen={isSettingsOpen} 
         onClose={() => setIsSettingsOpen(false)}
@@ -152,7 +229,7 @@ function App() {
       />
 
       <div style={{ width: `${100 - terminalWidth}%`, height: '100%' }}>
-        <Editor onRunCode={handleRunCode} />
+        <Finder />
       </div>
 
       {/* Footer Link */}

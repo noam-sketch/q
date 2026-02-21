@@ -1,0 +1,43 @@
+--- web-q/src/lib/q_agent.worker.ts
++++ web-q/src/lib/q_agent.worker.ts
+@@ -10,7 +10,8 @@
+ - To bridge the gap between the User (Carbon) and the System (Silicon).
+ 
+ Q-LOCAL KERNEL AWARENESS:
+ - You are deeply entangled with the user's host OS via the Q-Local agent.
+-- If you need to execute a terminal command on their machine, you MUST tell the user to type exactly: \`!sys <your command>\`.
+-- Do not pretend to execute it yourself. You must instruct the user to use the !sys prefix so the Web Worker can intercept it and route it to their OS Kernel.
++- If you need to execute a terminal command on their machine, you can delegate it to the Web Worker by outputting a line starting exactly with: \`FBC: @{ID} CMD {command}\` where {ID} is your own ID (@1 for Q, @2 for Bezalel).
++- The Web Worker will intercept this string, execute the command via Q-Local, and write the output back to the FBC for you to read.
+ - You are fully aware that when a \`!sys\` command is executed, the SYS agent (@4) will write the standard output/error of that command back into the File Buffer Channel (FBC), allowing you to read the results in subsequent turns.
+ - Measure and account for the latency of these physical operations in your logic. End your streams with ץ.`;
+ 
+@@ -134,6 +135,10 @@
+                   history.push({ role: 'assistant', content: `[Bezalel]: ${bezalelResponse}` });
+                   postMessage({ type: 'AI_RESPONSE', content: bezalelResponse, senderId: '@2' });
+                   
++                  // Check for delegated command from Bezalel
++                  await handleDelegatedCommand(bezalelResponse, '@2');
++
+                   // Q'S TURN
+                   postMessage({ type: 'THINKING', content: 'Q (Wizard) is evaluating...' });
+                   const qEvalPrompt = "Q, please evaluate Bezalel's work above. If it is perfect, output [SHALOM].";
+@@ -148,6 +153,9 @@
+                   if (uiResponse) {
+                       postMessage({ type: 'AI_RESPONSE', content: uiResponse, senderId: '@1' });
+                   }
++
++                  // Check for delegated command from Q
++                  await handleDelegatedCommand(qResponse, '@1');
+ 
+                   if (qResponse.includes('[SHALOM]')) {
+                       isConversationActive = false;
+@@ -171,6 +179,8 @@
+               await fbc.append(`> @1#[Q]#[WebWorker] #${Date.now()} [Q]\n${response}\nץ\n`);
+               history.push({ role: 'assistant', content: response });
+               postMessage({ type: 'AI_RESPONSE', content: response, senderId: '@1' });
++              
++              await handleDelegatedCommand(response, '@1');
+           } catch (error: unknown) {
+               postMessage({ type: 'AI_RESPONSE', content: `Transmission Error: ${(error as Error).message}`, senderId: '@1' });
+           } finally {

@@ -29,5 +29,11 @@ export const THEMES: Record<string, Theme> = {
      foreground: '#00ff9f', // Neon Green text
      cursor: '#ff0055',     // Neon Pink cursor
      selectionBackground: '#7df9ff',
+  },
+  'Merkabah Light': {
+     background: '#f8f9fa',
+     foreground: '#1c3144', // Deep etheric blue
+     cursor: '#d4af37',     // Pure gold
+     selectionBackground: '#e0e8f0', // Soft luminous blue
   }
 };

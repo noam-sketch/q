@@ -1,16 +1,11 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { executeCommand } from './os_agent.js';
-import { buildFractalTree } from './fractal_tree.js';
 
-export type QLocalMessage = {
+export interface QLocalMessage {
     id: string;
     type: 'EXECUTE_COMMAND';
     payload: string;
-} | {
-    id: string;
-    type: 'SYNC_FRACTAL_TREE';
-    payload: string; // The root path to sync
-};
+}
 
 export class QLocalServer {
     private port: number;
@@ -46,29 +41,11 @@ export class QLocalServer {
                                 error: errStr
                             }));
                         }
-                    } else if (message.type === 'SYNC_FRACTAL_TREE') {
-                        try {
-                            const start = Date.now();
-                            const tree = await buildFractalTree(message.payload);
-                            const latency = Date.now() - start;
-                            ws.send(JSON.stringify({
-                                id: message.id,
-                                type: 'COMMAND_SUCCESS',
-                                payload: JSON.stringify({ tree, latencyMs: latency })
-                            }));
-                        } catch (error: unknown) {
-                            const errStr = error instanceof Error ? error.message : String(error);
-                            ws.send(JSON.stringify({
-                                id: message.id,
-                                type: 'ERROR',
-                                error: errStr
-                            }));
-                        }
                     } else {
                         ws.send(JSON.stringify({
-                            id: (message as any).id,
+                            id: message.id,
                             type: 'ERROR',
-                            error: `Unknown command type: ${(message as any).type}`
+                            error: `Unknown command type: ${message.type}`
                         }));
                     }
                 } catch (e: unknown) {

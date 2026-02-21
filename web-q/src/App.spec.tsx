@@ -1,11 +1,7 @@
-/// <reference types="vite/client" />
-/// <reference types="@testing-library/jest-dom" />
-
-import { expect, afterEach, vi } from 'vitest';
-import { cleanup } from '@testing-library/react';
-import * as matchers from '@testing-library/jest-dom/matchers';
-
-expect.extend(matchers);
+import { describe, it, expect, vi } from 'vitest';
+import { render } from '@testing-library/react';
+import App from './App';
+import React from 'react';
 
 // Mock Worker
 class MockWorker {
@@ -17,7 +13,7 @@ class MockWorker {
 }
 (globalThis as any).Worker = MockWorker;
 
-// Mock matchMedia
+// Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation(query => ({
@@ -32,6 +28,9 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-afterEach(() => {
-  cleanup();
+describe('App', () => {
+  it('should render without crashing', () => {
+    const { container } = render(<App />);
+    expect(container).toBeTruthy();
+  });
 });

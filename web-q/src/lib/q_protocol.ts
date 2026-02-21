@@ -7,6 +7,7 @@ export type QMessage =
   | { type: 'THINKING', content: string }
   | { type: 'ERROR', content: string }
   | { type: 'STATUS', content: string }
+  | { type: 'FBC_CHANNEL', channel: string }
   | { type: 'CONFIG', apiKey: string, model: string, claudeModel?: string, triadMode?: boolean };
 
 export interface WorkerState {

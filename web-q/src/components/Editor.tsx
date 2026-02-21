@@ -15,14 +15,14 @@ const Editor: React.FC<EditorProps> = ({ onRunCode }) => {
     }, []);
 
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#282c34', borderLeft: '1px solid #333' }}>
-            <div style={{ padding: '10px', backgroundColor: '#21252b', display: 'flex', gap: '10px', borderBottom: '1px solid #181a1f' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: 'var(--theme-panel)', borderLeft: '1px solid var(--theme-border)' }}>
+            <div style={{ padding: '10px', backgroundColor: 'var(--theme-bg)', display: 'flex', gap: '10px', borderBottom: '1px solid var(--theme-border)' }}>
                 <button 
                     onClick={() => onRunCode(code)}
                     style={{
                         padding: '8px 16px',
-                        backgroundColor: '#98c379',
-                        color: '#282c34',
+                        backgroundColor: 'var(--theme-accent)',
+                        color: 'var(--theme-bg)',
                         border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',
@@ -36,8 +36,8 @@ const Editor: React.FC<EditorProps> = ({ onRunCode }) => {
                     onClick={() => setCode('')}
                     style={{
                         padding: '8px 16px',
-                        backgroundColor: '#e06c75',
-                        color: '#fff',
+                        backgroundColor: 'var(--theme-border)',
+                        color: 'var(--theme-text)',
                         border: 'none',
                         borderRadius: '4px',
                         cursor: 'pointer',

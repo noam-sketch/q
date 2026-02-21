@@ -5,7 +5,10 @@ export class QLocalClient {
     private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
     private connectionListeners: ((status: boolean) => void)[] = [];
 
-    constructor(private port: number = 1984) {
+    private port: number;
+
+    constructor(port: number = 1984) {
+        this.port = port;
         // Delay initial connection slightly so React can mount
         setTimeout(() => this.connect(), 1000);
     }
@@ -119,6 +122,48 @@ export class QLocalClient {
                     id,
                     type: 'EXECUTE_COMMAND',
                     payload: command
+                }));
+            } catch {
+                clearTimeout(timeout);
+                this.messageQueue.delete(id);
+                reject(new Error('Failed to send command over WebSocket.'));
+            }
+        });
+    }
+
+    public async syncFractalTree(path: string): Promise<{ tree: any, latencyMs: number }> {
+        if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            throw new Error('Q-Local is not entangled.');
+        }
+
+        const id = this.generateId();
+
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+                this.messageQueue.delete(id);
+                reject(new Error(`Command timed out after 30 seconds: SYNC_FRACTAL_TREE ${path}`));
+            }, 30000);
+
+            this.messageQueue.set(id, { 
+                resolve: (data) => {
+                    clearTimeout(timeout);
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch (e) {
+                        reject(new Error('Failed to parse fractal tree response'));
+                    }
+                }, 
+                reject: (err) => {
+                    clearTimeout(timeout);
+                    reject(err);
+                } 
+            });
+
+            try {
+                this.ws!.send(JSON.stringify({
+                    id,
+                    type: 'SYNC_FRACTAL_TREE',
+                    payload: path
                 }));
             } catch {
                 clearTimeout(timeout);

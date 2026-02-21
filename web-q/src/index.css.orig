@@ -11,12 +11,6 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  
-  --theme-bg: #021a24;
-  --theme-text: #e0f7fa;
-  --theme-accent: #00e5ff;
-  --theme-panel: #1a1a1a;
-  --theme-border: #333;
 }
 
 body {

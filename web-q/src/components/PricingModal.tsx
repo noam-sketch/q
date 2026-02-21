@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { SubscriptionService, PlanType } from '../lib/subscription';
+import { SubscriptionService } from '../lib/subscription';
+import type { PlanType } from '../lib/subscription';
 
 interface PricingModalProps {
   isOpen: boolean;
