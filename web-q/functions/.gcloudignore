@@ -1,7 +1,0 @@
-.gcloudignore
-.git
-.gitignore
-node_modules/
-package-lock.json
-npm-debug.log
-firebase-debug.log

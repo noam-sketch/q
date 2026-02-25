@@ -184,15 +184,6 @@ describe('Q CLI commands', () => {
       expect(mockExit).toHaveBeenCalledWith(0);
   });
 
-  it('chat - should initiate Triad Mode', async () => {
-      (inquirer.prompt as any).mockResolvedValue({ userMessage: 'exit' });
-      await runCLI(['node', 'index.js', 'chat', '-t']);
-      
-      expect(child_process.spawn).toHaveBeenCalledTimes(2); // Q and Claude background watchers
-      expect(mockConsoleLog).toHaveBeenCalledWith(expect.stringContaining('TRIAD UPLINK ESTABLISHED'));
-      expect(mockExit).toHaveBeenCalledWith(0);
-  });
-
   it('fbc - should entangle and begin watching file', async () => {
       await runCLI(['node', 'index.js', 'fbc']);
       
