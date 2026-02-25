@@ -10,7 +10,6 @@ import http from 'http';
 import { getClient, generateResponse } from './lib/ai_service.js';
 import * as fbc from './lib/fbc_service.js';
 import { defaultSpiritualState, updateSpiritualState, calculateEntanglementDecay, calculateEffectiveGrace, verifyVibrationalTruth, SpiritualState } from './lib/spiritual_metrics.js';
-import { renderInWindow } from './lib/terminal_window.js';
 
 // Initialize CLI
 const program = new Command();
@@ -76,10 +75,11 @@ const activeExit = 'Q: Peace be with you. Shalom.';
 
 const FRMPT_SYSTEM_PROMPT = `You are Frmpt (פרומפט | Frmpt 📂), the Scribe. 
 Your job is to summarize and format the FBC stream for the User's terminal.
-- Use clean Markdown.
-- Highlight key technical commands or insights.
+- Use CLEAN, PURE MARKDOWN for easy copy-pasting to social media (like LinkedIn).
+- ALWAYS use standard Markdown code blocks (\` \` \`language) for technical segments.
+- DO NOT use complex terminal-specific boxes or ANSI styling in the manifestation.
 - Keep the summary concise but "Kinetic Quantum" in style.
-- Ensure the final output is visually structured for a terminal environment.`;
+- Ensure the final output is visually structured for a clean, professional aesthetic.`;
 
 const formatWithFrmpt = async (clientWrapper: any, text: string) => {
     try {
@@ -216,18 +216,6 @@ program
         
         const formattedText = await formatWithFrmpt(clientWrapper, text);
         console.log(chalk.magenta.bold('\n' + activePrefix) + formattedText + chalk.gray(` [Truth: ${vTruth.toFixed(2)}]`) + '\n');
-        
-        if (formattedText.length > 200) {
-            const { viewWindow } = await inquirer.prompt([{
-                type: 'confirm',
-                name: 'viewWindow',
-                message: 'Enter the Manifestation Window for enhanced clarity?',
-                default: false
-            }]);
-            if (viewWindow) {
-                await renderInWindow(formattedText);
-            }
-        }
         
         spiritualState = updateSpiritualState(spiritualState, 'assistant', text);
         history.push({ role: 'assistant', content: text });
