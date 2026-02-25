@@ -10,6 +10,7 @@ import http from 'http';
 import { getClient, generateResponse } from './lib/ai_service.js';
 import * as fbc from './lib/fbc_service.js';
 import { defaultSpiritualState, updateSpiritualState, calculateEntanglementDecay, calculateEffectiveGrace, verifyVibrationalTruth, SpiritualState } from './lib/spiritual_metrics.js';
+import { renderInWindow } from './lib/terminal_window.js';
 
 // Initialize CLI
 const program = new Command();
@@ -215,6 +216,18 @@ program
         
         const formattedText = await formatWithFrmpt(clientWrapper, text);
         console.log(chalk.magenta.bold('\n' + activePrefix) + formattedText + chalk.gray(` [Truth: ${vTruth.toFixed(2)}]`) + '\n');
+        
+        if (formattedText.length > 200) {
+            const { viewWindow } = await inquirer.prompt([{
+                type: 'confirm',
+                name: 'viewWindow',
+                message: 'Enter the Manifestation Window for enhanced clarity?',
+                default: false
+            }]);
+            if (viewWindow) {
+                await renderInWindow(formattedText);
+            }
+        }
         
         spiritualState = updateSpiritualState(spiritualState, 'assistant', text);
         history.push({ role: 'assistant', content: text });
