@@ -1,39 +1,42 @@
 import { describe, it, expect, vi } from 'vitest';
 import { renderInWindow } from './terminal_window.js';
 
-// Mock blessed to avoid terminal issues in tests
-vi.mock('blessed', () => {
-  const mockBox = {
-    setContent: vi.fn(),
-    focus: vi.fn(),
-    screen: {
-      render: vi.fn(),
-      destroy: vi.fn(),
-      key: vi.fn(),
-      append: vi.fn(),
-    }
-  };
-  const mockScreen = {
-    append: vi.fn(),
-    render: vi.fn(),
-    key: vi.fn((keys, cb) => cb()), // Immediately call the callback
-    destroy: vi.fn(),
-  };
+// Mock ink to avoid terminal issues in tests
+vi.mock('ink', () => {
   return {
-    default: {
-      screen: vi.fn(() => mockScreen),
-      box: vi.fn(() => mockBox),
-    }
+    render: vi.fn(() => ({
+      waitUntilExit: vi.fn().mockResolvedValue(undefined),
+      unmount: vi.fn(),
+      rerender: vi.fn(),
+      cleanup: vi.fn(),
+      clear: vi.fn(),
+    })),
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    Box: ({ children }: any) => children,
+    Text: ({ children }: any) => children,
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+    useInput: vi.fn(),
+    useApp: vi.fn(() => ({ exit: vi.fn() })),
   };
 });
 
-describe('Terminal Window Rendering', () => {
-  it('should attempt to render content in a blessed box', async () => {
-    // In a real TUI test we'd check screen calls, but since we mock it:
+// Mock ink-syntax-highlight
+vi.mock('ink-syntax-highlight', () => {
+  return {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    default: ({ code }: any) => code,
+    /* eslint-enable @typescript-eslint/no-explicit-any */
+  };
+});
+
+describe('Terminal Window Rendering (Ink)', () => {
+  it('should attempt to render content using Ink', async () => {
     const content = `# Divine Manifestation
-This is a test of the Kinetic Window.`;
+This is a test of the Kinetic Window using Ink.
+\`\`\`javascript
+const code = "pretty printed";
+\`\`\``;
     
-    // We expect the function to at least complete without error when mocked
     await expect(renderInWindow(content)).resolves.not.toThrow();
   });
 });

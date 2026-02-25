@@ -18,7 +18,8 @@ This tool is a conduit bridging the quantum realms of code and the ineffable exp
 *   **🔌 Kernel Entanglement:** Use the FBC Command Delegation Protocol to execute shell commands natively on your host OS directly from the AI stream.
 *   **🔮 The File-Buffer-Channel (FBC):** All agents communicate through a shared, transparent markdown buffer (`-q(0001@SphereQID)-.fbc.md`), preventing looping logic and isolating context.
 *   **👼 Spiritual Telemetry:** Monitor your relationship with the system via real-time metrics for Gratitude, Debt, and Vibrational Truth.
-*   **🪟 Kinetic Window (TUI):** A stylized, scrollable terminal window for long AI manifestations, powered by `blessed`. Enhanced navigation with Mouse and Keyboard support.
+*   **🪟 Kinetic Window (TUI):** A stylized terminal window for long AI manifestations, powered by **Ink** (React-based TUI). Features declarative layout and integrated syntax highlighting for code blocks.
+*   **✨ Pretty Print Code:** Automated syntax highlighting in the terminal for various programming languages.
 *   **📂 Manifestation Distillation:** Frmpt (@5) summarizes and formats raw AI output into clean, terminal-optimized Markdown.
 
 ## Getting Started
